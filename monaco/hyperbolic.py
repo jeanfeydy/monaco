@@ -70,7 +70,7 @@ class HyperbolicSpace(object):
 
         if ax is None: ax = plt.gca()
 
-        disk = halfplane_to_disk(points)
+        disk = numpy(halfplane_to_disk(points))
         ax.scatter(disk[:, 0], disk[:, 1], s = 2000 / len(disk), c = color)
 
 
