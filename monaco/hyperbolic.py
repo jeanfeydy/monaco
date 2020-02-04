@@ -11,6 +11,8 @@ from .proposals import Proposal
 
 numpy = lambda x : x.cpu().numpy()
 
+def normalize(points):
+    return F.normalize(points, p=2, dim=1)
 
 
 def halfplane_to_disk(points):
@@ -54,8 +56,9 @@ class HyperbolicSpace(object):
     
     def apply_noise(self, z, v):
         """Assumes that noise v is centered around i = (0, 1)."""
-        x, y = z[:,0], z[:,1]
-        return x.view(-1,1) + y.view(-1,1) * v
+        w = z[:,-1:] * v.clone()
+        w[:,:-1] += z[:,:-1]
+        return w
 
 
     def discrepancy(self, a, b):
@@ -72,7 +75,8 @@ class HyperbolicSpace(object):
 
 
     def plot(self, potential, color, ax = None):
-        
+        if ax is None: ax = plt.gca()
+
         disk = self.grid.clone()
         mask = (disk**2).sum(1) < 1
         unit_disk = disk[mask, :].contiguous()
@@ -110,29 +114,39 @@ class BallProposal(Proposal):
         super().__init__(*args, **kwargs)
 
 
-    def sample_angles(self, N, scales):
+    def sample_radii(self, N, scales):
+        """Returns hyperbolic radii and angles."""
 
-        angles  = scales * torch.rand(N, 1).type(self.dtype)
-        uniform = torch.rand(N, 1).type(self.dtype)
-
-        threshold = (1 - angles.cos()) / (1 - scales.cos())
-        reject = (uniform > threshold).view(-1)
-        M = int(reject.sum())
-
-        if M == 0:
-            return angles
+        if self.D == 2:
+            y = torch.rand(N, 1).type(self.dtype)
+            y = 1 + y * ((scales.exp() + (-scales).exp())/2 - 1) 
+            return (y + (y**2 - 1).sqrt()).log()
         else:
-            angles[reject] = self.sample_angles(M, scales[reject])
-            return angles
+            raise NotImplementedError()
+            radii  = scales * torch.rand(N, 1).type(self.dtype)
+            uniform = torch.rand(N, 1).type(self.dtype)
+
+            threshold = (radii.exp() - (-radii).exp()) / (scales.exp() - (-scales).exp())
+            reject = (uniform > threshold).view(-1)
+            M = int(reject.sum())
+
+            if M == 0:
+                return angles
+            else:
+                angles[reject] = self.sample_angles(M, scales[reject])
+                return angles
 
 
     def sample_noise(self, N, scales):
-        angles = self.sample_angles(N, scales)
-        
-        directions = torch.randn(N, 3).type(self.dtype)
+        radii = self.sample_radii(N, scales)
+
+        disk_radii = ((radii).exp() - 1) / ((radii).exp() + 1)
+
+        directions = torch.randn(N, 2).type(self.dtype)
         directions = normalize(directions)  # Direction, randomly sampled on the sphere
 
-        return quat_from_angles_directions(angles, directions)
+        disk_noise = disk_radii.view(-1,1) * directions.view(-1,2)
+        return disk_to_halfplane(disk_noise)
 
 
     def nlog_density(self, target, source, log_weights, scales, logits):
@@ -140,9 +154,18 @@ class BallProposal(Proposal):
 
         x_i = LazyTensor( target[:,None,:] )  # (N,1,D)
         y_j = LazyTensor( source[None,:,:] )  # (1,M,D)
-        S_ij = (x_i | y_j).abs()  # (N,M)
-        neighbors_ij = (S_ij - (scales / 2).cos()).step()  # 1 if |x_i-y_j| <= scales, 0 otherwise
-        volumes = (scales - scales.sin()) / float( np.pi )
+        
+        D_ij = ((x_i - y_j)**2).sum(-1)
+        D_ij = 1 + D_ij / (2 * x_i[self.D - 1] * y_j[self.D - 1])
+        D_ij = (D_ij + (D_ij**2 - 1).sqrt()).log()  # (N,M)
+        
+        neighbors_ij = (scales - D_ij).step()  # 1 if |x_i-y_j| <= scales, 0 otherwise
+
+        if self.D == 2:
+            volumes = float( np.pi ) * (scales.exp() + (-scales).exp())
+        else:
+            raise NotImplementedError()
+
         neighbors_ij = neighbors_ij / volumes
 
         if log_weights is None:

@@ -49,7 +49,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
                 None
 
             if run == 0 and it + 1 in to_plot:
-                plt.figure(figsize = (12,8))
+                plt.figure(figsize = (8,8))
 
                 try:
                     display(sampler.space, sampler.distribution.potential, x, y, 

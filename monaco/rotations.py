@@ -62,7 +62,7 @@ def quat_to_angles_directions(points):
     return angles, directions.contiguous()
 
 
-def quat_from_angles_directions(angles, directions):
+def angles_directions_to_quat(angles, directions):
     t = angles / 2
     return torch.cat( ( t.cos().view(-1,1), 
                         t.sin().view(-1,1) * directions ),
@@ -176,6 +176,7 @@ class RejectionSampling(object):
         return V_i.reshape(-1)  # (N,)
 
 
+    '''
     def sample(self, N = 1):
         """Returns a sample array of shape (N,D)."""
         ref = torch.ones(N,1).type(self.dtype) * torch.FloatTensor([1, 0, 0, 0]).type(self.dtype)
@@ -193,7 +194,7 @@ class RejectionSampling(object):
         else:
             x[reject] = self.sample(M)
             return x
-
+    '''
 
 
 
@@ -228,7 +229,7 @@ class BallProposal(Proposal):
         directions = torch.randn(N, 3).type(self.dtype)
         directions = normalize(directions)  # Direction, randomly sampled on the sphere
 
-        return quat_from_angles_directions(angles, directions)
+        return angles_directions_to_quat(angles, directions)
 
 
     def nlog_density(self, target, source, log_weights, scales, logits):
