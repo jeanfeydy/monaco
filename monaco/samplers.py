@@ -16,8 +16,6 @@ def display(space, potential, sample, proposal_sample=None, proposal_potential=N
 
     if proposal_sample is not None:
         space.scatter(proposal_sample, "green")
-    if proposal_potential is not None:
-        space.plot(proposal_potential, "green")
 
     space.plot(potential, "red")
     space.scatter(sample, "blue")
@@ -97,7 +95,7 @@ class MonteCarloSampler(object):
 
     def __init__(self, space, start, proposal, verbose = False):
         self.space = space
-        self.x = start
+        self.x = start.clone()
         self.proposal = proposal
         self.verbose = verbose
         self.iteration = 0
@@ -120,6 +118,46 @@ class MonteCarloSampler(object):
 
     def update(self):
         raise NotImplementedError()
+
+
+
+
+class ParallelMH(MonteCarloSampler):
+    """Parallel Metropolis-Hastings."""
+
+    def __init__(self, space, start, proposal, annealing = None, verbose = False):
+        super().__init__(space, start, proposal, verbose = verbose)
+        self.annealing = annealing
+
+    def update(self):
+        x = self.x
+        N = len(x)
+        y = self.proposal.sample(x)  # Proposal
+
+        # Annealing ratio
+        ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
+
+        # Logarithm of the MH ratio:
+        scores = ratio * (self.distribution.potential(x) - self.distribution.potential(y))
+
+        accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
+
+        x[accept,:] = y[accept,:]  # MCMC update
+        
+        # x = x.clamp(0, 1)       # Clip to the unit square
+        rate = (1. * accept).mean()
+
+        self.x = x
+        return x, y, rate, None
+
+
+
+
+
+
+
+
+
 
 
 class CMC(MonteCarloSampler):

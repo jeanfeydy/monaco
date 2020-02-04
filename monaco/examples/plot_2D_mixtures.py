@@ -77,24 +77,29 @@ proposal = BallProposal(space, scale = .05)
 ########################################
 #
 
-start = torch.rand(N, D).type(dtype)
+start = .75 + .25 * torch.rand(N, D).type(dtype)
+
+##########################################
+#
+
+from monaco.samplers import ParallelMetropolisHastings
+
+pmh_sampler = ParallelMetropolisHastings(space, start, proposal).fit(distribution)
+display_samples(pmh_sampler, iterations = 100)
+
 
 ##########################################
 #
 
 from monaco.samplers import CMC
+
 cmc_sampler = CMC(space, start, proposal).fit(distribution)
-
-###########################################
-#
-
-from monaco.samplers import display_samples
 display_samples(cmc_sampler, iterations = 100)
+
 
 #######################
 #
 
-start = torch.rand(N, D).type(dtype)
 acmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
 display_samples(acmc_sampler, iterations = 100)
 
