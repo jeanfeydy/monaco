@@ -70,9 +70,11 @@ space = HyperbolicSpace(dimension = 2, dtype = dtype)
 x = torch.from_numpy(embedding).type(dtype)
 x = disk_to_halfplane(x)
 
+numpy = lambda x : x.cpu().numpy()
+
 fig = plt.figure(figsize=(8,8))
 
-plt.scatter(x[:,0], x[:,1], c = labels, s = 2000 / len(x), cmap='Spectral')
+plt.scatter(numpy(x)[:,0], numpy(x)[:,1], c = labels, s = 2000 / len(x), cmap='Spectral')
 plt.yscale('log')
 
 

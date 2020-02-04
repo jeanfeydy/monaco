@@ -41,12 +41,12 @@ def display_samples(sampler, iterations = 100, runs = 5):
         for it, (x, y, rate, u) in enumerate(sampler):
             
             iters.append(it)
-            rates.append(rate)
+            rates.append(rate.item())
 
             try:
                 N = len(x)
-                errors.append( sampler.space.discrepancy(x, sampler.distribution.sample(N)) )
-                fluctuations.append( sampler.space.discrepancy(sampler.distribution.sample(N), sampler.distribution.sample(N)))
+                errors.append( sampler.space.discrepancy(x, sampler.distribution.sample(N)).item() )
+                fluctuations.append( sampler.space.discrepancy(sampler.distribution.sample(N), sampler.distribution.sample(N)).item() )
             except AttributeError:
                 None
 
