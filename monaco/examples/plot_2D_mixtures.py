@@ -9,6 +9,7 @@ Blabla
 ######################
 # Blabla
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -43,12 +44,27 @@ w = w / w.sum()  # normalize weights
 distribution = GaussianMixture(space, m, s, w)
 
 
+#######################################
+#
+
+
+from monaco.euclidean import UnitPotential
+
+def sinc_potential(x, stripes = 3):
+    sqnorm = (x**2).sum(-1)
+    V_i = np.pi * stripes * sqnorm
+    V_i = (V_i.sin() / V_i) ** 2
+    return - V_i.log()
+
+distribution = UnitPotential(space, sinc_potential)
+
+
 # Display the initial configuration:
 plt.figure(figsize = (8, 8))
 space.scatter( distribution.sample(N), "red" )
 space.plot( distribution.potential, "red")
 space.draw_frame()
-#plt.show()
+
 
 
 #######################################
@@ -87,8 +103,9 @@ display_samples(acmc_sampler, iterations = 100)
 
 from monaco.samplers import KIDS_CMC
 
-start = torch.rand(N, D).type(dtype)
-kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 5).fit(distribution)
-display_samples(kids_sampler, iterations = 100)
+if False:
+    start = torch.rand(N, D).type(dtype)
+    kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 5).fit(distribution)
+    display_samples(kids_sampler, iterations = 100)
 
 plt.show()

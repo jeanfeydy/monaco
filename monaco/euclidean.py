@@ -189,6 +189,44 @@ class CauchyMixture(Mixture):
 
 
 
+class UnitPotential(object):
+    def __init__(self, space, potential):
+
+        self.D = space.dimension
+        self.dtype = space.dtype
+        self.inner_potential = potential
+
+
+    def potential(self, x):
+        """Evaluates the potential on the point cloud x."""
+
+        V_i = self.inner_potential(x)
+
+        out_of_bounds = (x - .5).abs().max(dim=1).values > .5
+        V_i[out_of_bounds] = 10000000.
+
+        return V_i.reshape(-1)  # (N,)
+
+
+    def sample(self, N = 1):
+        """Returns a sample array of shape (N,D)."""
+        x = torch.rand(N, self.D).type(self.dtype)
+        uniform = torch.rand(N).type(self.dtype)
+        
+        threshold = (- self.potential(x)).exp()
+        reject = (uniform > threshold).view(-1)
+        M = int(reject.sum())
+
+        if M == 0:
+            return x
+        else:
+            x[reject] = self.sample(M)
+            return x
+
+
+
+
+
 
 
 class BallProposal(Proposal):
