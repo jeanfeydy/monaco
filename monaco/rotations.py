@@ -41,7 +41,7 @@ def quat_mult(q_1, q_2):
 
 def quat_to_matrices(points):
     points = normalize(points)
-    w, x, y, z = points[:,0], points[:,1], points[:,2], point[:,3]
+    w, x, y, z = points[:,0], points[:,1], points[:,2], points[:,3]
     Q = torch.stack(
             (1 - 2 * y**2 - 2 * z**2, 2*x*y - 2*z*w, 2*x*z + 2*y*w,
              2*x*y + 2*z*w, 1 - 2 * x**2 - 2 * z**2, 2*y*z - 2*x*w,
@@ -155,6 +155,47 @@ class Rotations(object):
 
         ax.axis("off")
         ax.view_init(azim=-80, elev=30)
+
+
+
+
+
+
+class RejectionSampling(object):
+    def __init__(self, space, potential):
+        self.uniform_sampler = BallProposal(space, [np.pi])
+
+        self.D = space.dimension
+        self.dtype = space.dtype
+        self.inner_potential = potential
+
+
+    def potential(self, x):
+        """Evaluates the potential on the point cloud x."""
+        V_i = self.inner_potential(x)
+        return V_i.reshape(-1)  # (N,)
+
+
+    def sample(self, N = 1):
+        """Returns a sample array of shape (N,D)."""
+        ref = torch.ones(N,1).type(self.dtype) * torch.FloatTensor([1, 0, 0, 0]).type(self.dtype)
+        return ref
+
+        x = self.uniform_sampler.sample(ref).type(self.dtype)
+        uniform = torch.rand(N).type(self.dtype)
+        
+        threshold = (- self.potential(x)).exp()
+        reject = (uniform > threshold).view(-1)
+        M = int(reject.sum())
+
+        if M == 0:
+            return x
+        else:
+            x[reject] = self.sample(M)
+            return x
+
+
+
 
 
 

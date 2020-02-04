@@ -122,7 +122,7 @@ class MonteCarloSampler(object):
 
 
 
-class ParallelMH(MonteCarloSampler):
+class ParallelMetropolisHastings(MonteCarloSampler):
     """Parallel Metropolis-Hastings."""
 
     def __init__(self, space, start, proposal, annealing = None, verbose = False):
