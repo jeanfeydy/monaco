@@ -145,4 +145,58 @@ proposal = BallProposal(space, scale = .1)
 cmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
 display_samples(cmc_sampler, iterations = 100, runs = 5)
 
+
+
+
+from monaco.rotations import quat_to_matrices
+from geomloss import SamplesLoss
+
+wasserstein = SamplesLoss("sinkhorn", p=2, blur=.05)
+
+
+class WassersteinDistribution(object):
+    def __init__(self, source, target, strength = 1.):
+        self.source = source
+        self.target = target
+        self.strength = strength
+
+    def potential(self, q):
+        """Evaluates the potential on the point cloud x."""
+        R = quat_to_matrices(q)  # (N, 3, 3)
+        models = R @ self.source.t()  # (N, 3, npoints)
+        
+        N = len(models)
+        models = models.permute(0,2,1).contiguous()
+        targets = self.target.repeat(N, 1, 1).contiguous()
+        
+        V_i = wasserstein(models, targets)
+
+        return self.strength * V_i.view(-1)  # (N,)
+
+
+def load_coordinates(coordinates):
+    x = torch.FloatTensor(coordinates).type(dtype)
+    x -= x.mean(0)
+    scale = (x**2).sum(1).mean(0)
+    x /= scale
+    return x
+
+A = load_coordinates([[1., 0., 0.], [-1., 0., 0.]])
+B = load_coordinates([[0., 1., 0.], [0., -1., 0.]])
+
+distribution = WassersteinDistribution(A, B, strength = 10000.)
+
+#########################################
+#
+
+from monaco.samplers import CMC, display_samples
+
+N = 10000 if use_cuda else 50
+
+start = space.uniform_sample(N)
+proposal = BallProposal(space, scale = .1)
+
+cmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
+display_samples(cmc_sampler, iterations = 100, runs = 1)
+
 plt.show()
