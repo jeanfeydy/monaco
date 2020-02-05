@@ -82,7 +82,7 @@ start = .75 + .25 * torch.rand(N, D).type(dtype)
 ##########################################
 #
 
-from monaco.samplers import ParallelMetropolisHastings
+from monaco.samplers import ParallelMetropolisHastings, display_samples
 
 pmh_sampler = ParallelMetropolisHastings(space, start, proposal).fit(distribution)
 display_samples(pmh_sampler, iterations = 100)
