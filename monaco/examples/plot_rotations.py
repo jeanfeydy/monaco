@@ -130,7 +130,7 @@ def load_csv(fname):
 A = load_csv("data/Ca1UBQ.csv")
 B = load_csv("data/Ca1D3Z_1.csv")
 
-distribution = ProcrustesDistribution(A, B)
+distribution = ProcrustesDistribution(A, B, strength = 10000.)
 
 #########################################
 #
