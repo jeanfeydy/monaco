@@ -9,6 +9,7 @@ Blabla
 ######################
 # Blabla
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -85,11 +86,63 @@ if False:
 
 from monaco.samplers import CMC, display_samples
 
-start = torch.ones(N,1).type(dtype) * torch.FloatTensor([1, 0, 0, 0]).type(dtype)
 
+start = space.uniform_sample(N)
 cmc_sampler = CMC(space, start, proposal).fit(distribution)
 display_samples(cmc_sampler, iterations = 100, runs = 5)
 
 
+
+
+
+
+####################################
+#
+
+
+from monaco.rotations import quat_to_matrices
+
+class ProcrustesDistribution(object):
+    def __init__(self, source, target, strength = 1.):
+        self.source = source
+        self.target = target
+        self.strength = strength
+
+    def potential(self, q):
+        """Evaluates the potential on the point cloud x."""
+        R = quat_to_matrices(q)  # (N, 3, 3)
+        models = R @ self.source.t()  # (N, 3, npoints)
+
+        V_i = ((models - self.target.t().view(1,3,-1))**2).mean(2).sum(1)
+        print(V_i.mean().item())
+
+        return self.strength * V_i.view(-1)  # (N,)
+
+
+def load_csv(fname):
+    x = np.loadtxt(fname, skiprows = 1, delimiter = ',')
+    x = torch.from_numpy(x).type(dtype)
+    x -= x.mean(0)
+    scale = (x**2).sum(1).mean(0)
+    x /= scale
+    return x
+
+A = load_csv("data/Ca1UBQ.csv")
+B = load_csv("data/Ca1D3Z_1.csv")
+
+distribution = ProcrustesDistribution(A, B)
+
+#########################################
+#
+
+from monaco.samplers import CMC, display_samples
+
+N = 10000 if use_cuda else 50
+
+start = space.uniform_sample(N)
+proposal = BallProposal(space, scale = .1)
+
+cmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
+display_samples(cmc_sampler, iterations = 100, runs = 5)
 
 plt.show()

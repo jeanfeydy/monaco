@@ -156,6 +156,13 @@ class Rotations(object):
         ax.axis("off")
         ax.view_init(azim=-80, elev=30)
 
+    
+    def uniform_sample(self, N):
+        uniform_sampler = BallProposal(self, [float(np.pi)])
+        scales = np.pi * torch.ones(N,1).type(self.dtype)
+        return uniform_sampler.sample_noise(N, scales)
+
+
 
 
 

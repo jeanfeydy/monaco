@@ -154,7 +154,7 @@ class DistanceDistribution(object):
         D_ij = (D_ij + (D_ij**2 - 1).sqrt()).log()
 
         V_i = D_ij.min(dim=1)
-
+        V_i = 10 * V_i.sqrt()
         return V_i.reshape(-1)  # (N,)
 
 target = X if use_cuda else X[:100]
@@ -166,12 +166,12 @@ distribution = DistanceDistribution(target)
 
 from monaco.samplers import CMC, display_samples
 
-N = 1000 if use_cuda else 50
+N = 10000 if use_cuda else 50
 start = 1. + torch.rand(N, 2).type(dtype)
 
-proposal = BallProposal(space, scale = 0.5)
+proposal = BallProposal(space, scale = 2.)
 
-cmc_sampler = CMC(space, start, proposal).fit(distribution)
+cmc_sampler = CMC(space, start, proposal, annealing = 20).fit(distribution)
 display_samples(cmc_sampler, iterations = 100, runs = 5)
 
 plt.show()

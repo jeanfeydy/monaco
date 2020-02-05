@@ -33,6 +33,16 @@ def display_samples(sampler, iterations = 100, runs = 5):
 
     for run in range(runs):
 
+        
+        if run == 0:
+            plt.figure(figsize = (8,8))
+
+            display(sampler.space, sampler.distribution.potential, x_prev)
+
+            plt.title(f"it = 0")
+            plt.tight_layout()
+        
+        
         to_plot = [1, 2, 5, 10, 50, 100]
         
 
