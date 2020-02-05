@@ -30,9 +30,11 @@ space = EuclideanSpace(dimension = D, dtype = dtype)
 
 from monaco.euclidean import GaussianMixture, UnitPotential
 
-N, M = (2000 if use_cuda else 50), 5
+N, M = (10000 if use_cuda else 50), 5
+Nlucky = (10 if use_cuda else 2)
+nruns = 5
 
-test_case = "ackley"
+test_case = "sophia"
 
 if test_case == "gaussians":
     # Let's generate a blend of peaky Gaussians, in the unit square:
@@ -50,7 +52,7 @@ if test_case == "gaussians":
 elif test_case == "sophia":
     m = torch.FloatTensor([.5,    .1,   .2,   .8,  .9 ]).type(dtype)[:,None]
     s = torch.FloatTensor([.15, .005, .002,  .002, .005]).type(dtype)
-    w = torch.FloatTensor([.5,  2/12,  1/12, 1/12, 2/12]).type(dtype)
+    w = torch.FloatTensor([.1,  2/12,  1/12, 1/12, 2/12]).type(dtype)
     w = w / w.sum()  # normalize weights
 
     distribution = GaussianMixture(space, m, s, w)
@@ -77,6 +79,9 @@ space.draw_frame()
 #plt.show()
 
 
+start = .05 + .1 * torch.rand(N, D).type(dtype)
+start[:Nlucky] = .9
+
 #######################################
 #
 
@@ -84,50 +89,52 @@ from monaco.euclidean import BallProposal
 
 proposal = BallProposal(space, scale = .05)
 
+##########################################
+#
+
+
+from monaco.samplers import ParallelMetropolisHastings, display_samples
+
+pmh_sampler = ParallelMetropolisHastings(space, start, proposal).fit(distribution)
+display_samples(pmh_sampler, iterations = 20, runs = nruns)
+
+
+
 ########################################
 #
 
 
 from monaco.samplers import CMC
-start = .1 + .1 * torch.rand(N, D).type(dtype)
 cmc_sampler = CMC(space, start, proposal).fit(distribution)
-
-###########################################
-#
-
-from monaco.samplers import display_samples
-#display_samples(cmc_sampler, iterations = 100)
+display_samples(cmc_sampler, iterations = 20, runs = nruns)
 
 #######################
 #
 
 
-start = .1 + .1 * torch.rand(N, D).type(dtype)
-acmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
-#display_samples(acmc_sampler, iterations = 100)
+acmc_sampler = CMC(space, start, proposal, annealing = 5).fit(distribution)
+display_samples(acmc_sampler, iterations = 20, runs = nruns)
+
+
+#############################
+#
+
+from monaco.samplers import KIDS_CMC
+
+kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 50).fit(distribution)
+display_samples(kids_sampler, iterations = 20, runs = nruns)
+
+
 
 #############################
 #
 
 from monaco.samplers import MOKA_CMC
 
-proposal = BallProposal(space, scale = [.001, .002, .005, .01, .02, .05, .1, .2, .5])
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
 
-start = .1 + .1 * torch.rand(N, D).type(dtype)
 moka_sampler = MOKA_CMC(space, start, proposal, annealing = 10).fit(distribution)
-display_samples(moka_sampler, iterations = 100)
+display_samples(moka_sampler, iterations = 20, runs = nruns)
 
-
-
-#############################
-#
-
-if False:
-
-    from monaco.samplers import KIDS_CMC
-
-    start = .1 + .1 * torch.rand(N, D).type(dtype)
-    kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 50).fit(distribution)
-    display_samples(kids_sampler, iterations = 100)
 
 plt.show()

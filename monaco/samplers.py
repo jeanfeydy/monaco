@@ -42,7 +42,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
             plt.tight_layout()
         
         
-        to_plot = [1, 2, 5, 10, 50, 100]
+        to_plot = [1, 2, 5, 10, 20, 50, 100]
         
 
         for it, info in enumerate(sampler):
@@ -101,6 +101,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
         fluctuations = np.array(fluctuations)
         sns.lineplot(x = iters, y = fluctuations, markers = ".", label="Fluctuations")
         plt.xlabel("Iterations")
+        plt.ylim(bottom = 0.)
         plt.tight_layout()
 
     if probas != []:
@@ -110,6 +111,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
         for scale, proba in zip(sampler.proposal.s, probas):
             sns.lineplot(x = iters, y = proba, markers = "*", label="scale = {:.3f}".format(scale))
         plt.xlabel("Iterations")
+        plt.ylim(bottom = 0.)
         plt.tight_layout()
 
 
@@ -274,7 +276,6 @@ class MOKA_CMC(MonteCarloSampler):
 
         probas = avg_score.exp()
         
-        print(probas)
         probas = probas / probas.sum()
         self.proposal.probas = probas
 
