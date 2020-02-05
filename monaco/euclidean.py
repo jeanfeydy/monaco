@@ -243,7 +243,7 @@ class BallProposal(Proposal):
         return scales * r * n
 
 
-    def nlog_density(self, target, source, log_weights, scales, logits):
+    def nlog_density(self, target, source, log_weights, scales, probas):
 
         D_ij = squared_distances(target, source)
         neighbors_ij = (scales ** 2 - D_ij).step()  # 1 if |x_i-y_j| <= e, 0 otherwise
@@ -258,8 +258,8 @@ class BallProposal(Proposal):
         
         densities_i = neighbors_ij.sum(axis=1)  # (N,K)
 
-        probas = logits.softmax(0)
         return - (densities_i * probas[None,:]).sum(dim=1).log().view(-1)
+
 
 
 
@@ -276,7 +276,7 @@ class GaussianProposal(Proposal):
         return scales * torch.randn(N, self.D).type(self.dtype)
 
     
-    def nlog_density(self, target, source, log_weights, scales, logits):
+    def nlog_density(self, target, source, log_weights, scales, probas):
 
         D_ij = squared_distances(target, source)
         logK_ij = - D_ij / (2 * scales**2) - (self.D/2) * float(np.log(2*np.pi)) - self.D * scales.log()
@@ -288,4 +288,4 @@ class GaussianProposal(Proposal):
             logK_ij = logK_ij + logW_j
         
         logdensities_i = logK_ij.logsumexp(dim=1).reshape(-1)  # (N,K)
-        return - (logdensities_i + logits).logsumexp(dim=1).view(-1)
+        return - (logdensities_i + probas.log()[None,:]).logsumexp(dim=1).view(-1)

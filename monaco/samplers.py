@@ -29,10 +29,9 @@ def display_samples(sampler, iterations = 100, runs = 5):
     sampler.verbose = True
     x_prev = sampler.x
     
-    iters, rates, errors, fluctuations = [], [], [], []
+    iters, rates, errors, fluctuations, probas = [], [], [], [], []
 
     for run in range(runs):
-
         
         if run == 0:
             plt.figure(figsize = (8,8))
@@ -46,10 +45,19 @@ def display_samples(sampler, iterations = 100, runs = 5):
         to_plot = [1, 2, 5, 10, 50, 100]
         
 
-        for it, (x, y, rate, u) in enumerate(sampler):
+        for it, info in enumerate(sampler):
             
+            x = info["sample"]
+            y = info["proposal"]
+            u = info.get("log-weights", None)
+
             iters.append(it)
-            rates.append(rate.item())
+            rates.append(info["rate"].item())
+
+            try:
+                probas.append(info["probas"])
+            except KeyError:
+                None
 
             try:
                 N = len(x)
@@ -95,6 +103,16 @@ def display_samples(sampler, iterations = 100, runs = 5):
         plt.xlabel("Iterations")
         plt.tight_layout()
 
+    if probas != []:
+
+        plt.figure(figsize=(12,8))
+        probas = numpy(torch.stack(probas)).T
+        for scale, proba in zip(sampler.proposal.s, probas):
+            sns.lineplot(x = iters, y = proba, markers = "*", label="scale = {:.3f}".format(scale))
+        plt.xlabel("Iterations")
+        plt.tight_layout()
+
+
     sampler.verbose = verbosity
 
 
@@ -118,13 +136,13 @@ class MonteCarloSampler(object):
         return self
 
     def __next__(self):
-        x, y, accept, u = self.update()
+        info = self.update()
         self.iteration += 1
 
         if self.verbose:
-            return x, y, accept, u
+            return info
         else:
-            return x
+            return info["sample"]
 
     def update(self):
         raise NotImplementedError()
@@ -158,7 +176,15 @@ class ParallelMetropolisHastings(MonteCarloSampler):
         rate = (1. * accept).mean()
 
         self.x = x
-        return x, y, rate, None
+
+
+        info = {
+            "sample" : x,
+            "proposal": y,
+            "rate" : rate,
+        }
+
+        return info
 
 
 
@@ -198,7 +224,74 @@ class CMC(MonteCarloSampler):
         rate = (1. * accept).mean()
 
         self.x = x
-        return x, y, rate, None
+
+
+        info = {
+            "sample" : x,
+            "proposal": y,
+            "rate" : rate,
+        }
+
+        return info
+
+
+
+
+
+class MOKA_CMC(MonteCarloSampler):
+    """Collective Monte-Carlo, with adaptive kernels."""
+
+    def __init__(self, space, start, proposal, annealing = None, verbose = False):
+        super().__init__(space, start, proposal, verbose = verbose)
+        self.annealing = annealing
+
+    def update(self):
+        x = self.x
+        N = len(x)
+        indices = torch.randint(N, size = (N,)).to(x.device)
+        y, scale_indices = self.proposal.sample_indices(x[indices,:])  # Proposal
+
+        # Annealing ratio
+        ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
+
+        # Logarithm of the CMC ratio:
+        scores = ratio * (self.distribution.potential(x) - self.distribution.potential(y)) \
+                + self.proposal.potential(x)(y) - self.proposal.potential(x)(x)
+
+        accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
+
+        x[accept,:] = y[accept,:]  # MCMC update
+        
+        # Update the kernel probabilities:
+        probas = self.proposal.probas.clone()
+        avg_score = self.proposal.probas.clone()
+        for i in range(len(probas)):
+            # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
+            scores_i = scores[scale_indices == i]
+            avg_score[i] = scores_i.sum() / (1 + len(scores_i))
+
+        avg_score = avg_score - avg_score.logsumexp(0)
+
+        probas = avg_score.exp()
+        
+        print(probas)
+        probas = probas / probas.sum()
+        self.proposal.probas = probas
+
+        # x = x.clamp(0, 1)       # Clip to the unit square
+        rate = (1. * accept).mean()
+
+        self.x = x
+
+        info = {
+            "sample" : x,
+            "proposal": y,
+            "rate" : rate,
+            "probas": probas,
+        }
+
+        return info
+
 
 
 
@@ -254,4 +347,13 @@ class KIDS_CMC(MonteCarloSampler):
         rate = (1. * accept).mean()
 
         self.x = x
-        return x, y, rate, u
+
+
+        info = {
+            "sample" : x,
+            "proposal": y,
+            "rate" : rate,
+            "log-weights": u,
+        }
+
+        return info

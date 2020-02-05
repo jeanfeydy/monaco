@@ -149,7 +149,7 @@ class BallProposal(Proposal):
         return disk_to_halfplane(disk_noise)
 
 
-    def nlog_density(self, target, source, log_weights, scales, logits):
+    def nlog_density(self, target, source, log_weights, scales, probas):
         target, source = normalize(target), normalize(source)
 
         x_i = LazyTensor( target[:,None,:] )  # (N,1,D)
@@ -176,7 +176,6 @@ class BallProposal(Proposal):
         
         densities_i = neighbors_ij.sum(axis=1)  # (N,K)
 
-        probas = logits.softmax(0)
         return - (densities_i * probas[None,:]).sum(dim=1).log().view(-1)
 
 
