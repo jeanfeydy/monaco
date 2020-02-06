@@ -119,10 +119,11 @@ display_samples(acmc_sampler, iterations = 20, runs = nruns)
 #############################
 #
 
-from monaco.samplers import KIDS_CMC
+if False:
+    from monaco.samplers import KIDS_CMC
 
-kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 50).fit(distribution)
-display_samples(kids_sampler, iterations = 20, runs = nruns)
+    kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 50).fit(distribution)
+    display_samples(kids_sampler, iterations = 20, runs = nruns)
 
 
 

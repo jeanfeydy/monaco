@@ -29,7 +29,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     sampler.verbose = True
     x_prev = sampler.x
     
-    iters, rates, errors, fluctuations, probas = [], [], [], [], []
+    iters, rates, errors, fluctuations, probas, constants = [], [], [], [], [], []
 
     for run in range(runs):
         
@@ -60,6 +60,11 @@ def display_samples(sampler, iterations = 100, runs = 5):
                 None
 
             try:
+                constants.append(info["normalizing constant"])
+            except KeyError:
+                None
+            
+            try:
                 N = len(x)
                 errors.append( sampler.space.discrepancy(x, sampler.distribution.sample(N)).item() )
                 fluctuations.append( sampler.space.discrepancy(sampler.distribution.sample(N), sampler.distribution.sample(N)).item() )
@@ -87,29 +92,38 @@ def display_samples(sampler, iterations = 100, runs = 5):
     iters, rates = np.array(iters), np.array(rates)
 
     plt.figure(figsize=(12,8))
-    sns.lineplot(x = np.array(iters), y = np.array(rates), markers = "*", label="Acceptance rate")
+    sns.lineplot(x = np.array(iters), y = np.array(rates), markers = True, label="Acceptance rate")
     plt.ylim(0,1)
     plt.xlabel("Iterations")
     plt.tight_layout()
 
     if errors != []:
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=(8,8))
         errors = np.array(errors)
-        sns.lineplot(x = iters, y = errors, markers = "*", label="Error")
+        sns.lineplot(x = iters, y = errors, markers = True, label="Error")
 
     if fluctuations != []:
         fluctuations = np.array(fluctuations)
-        sns.lineplot(x = iters, y = fluctuations, markers = ".", label="Fluctuations")
+        sns.lineplot(x = iters, y = fluctuations, markers = True, label="Fluctuations")
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
         plt.tight_layout()
 
     if probas != []:
-
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=(8,8))
         probas = numpy(torch.stack(probas)).T
         for scale, proba in zip(sampler.proposal.s, probas):
-            sns.lineplot(x = iters, y = proba, markers = "*", label="scale = {:.3f}".format(scale))
+            sns.lineplot(x = iters, y = proba, markers = True, label="scale = {:.3f}".format(scale))
+        plt.xlabel("Iterations")
+        plt.ylim(bottom = 0.)
+        plt.tight_layout()
+
+
+    if constants != []:
+        plt.figure(figsize=(8,8))
+        constants = np.array(constants)
+        sns.lineplot(x = iters, y = constants, markers = True, label="Normalizing constant")
+
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
         plt.tight_layout()
@@ -117,6 +131,16 @@ def display_samples(sampler, iterations = 100, runs = 5):
 
     sampler.verbose = verbosity
 
+    to_return = {
+        "iteration" : iterations,
+        "rate" : rates,
+        "normalizing constant" : constants,
+        "error" : errors,
+        "fluctuation" : fluctuations,
+        "probas" : probas,
+    }
+
+    return to_return
 
 
 
@@ -214,9 +238,11 @@ class CMC(MonteCarloSampler):
         # Annealing ratio
         ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
 
+        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
+        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+
         # Logarithm of the CMC ratio:
-        scores = ratio * (self.distribution.potential(x) - self.distribution.potential(y)) \
-                + self.proposal.potential(x)(y) - self.proposal.potential(x)(x)
+        scores = ratio * (V_x - V_y) + Prop_y - Prop_x
 
         accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
 
@@ -232,6 +258,7 @@ class CMC(MonteCarloSampler):
             "sample" : x,
             "proposal": y,
             "rate" : rate,
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
         }
 
         return info
@@ -256,9 +283,11 @@ class MOKA_CMC(MonteCarloSampler):
         # Annealing ratio
         ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
 
+        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
+        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+
         # Logarithm of the CMC ratio:
-        scores = ratio * (self.distribution.potential(x) - self.distribution.potential(y)) \
-                + self.proposal.potential(x)(y) - self.proposal.potential(x)(x)
+        scores = ratio * (V_x - V_y) + Prop_y - Prop_x
 
         accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
 
@@ -289,6 +318,7 @@ class MOKA_CMC(MonteCarloSampler):
             "proposal": y,
             "rate" : rate,
             "probas": probas,
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
         }
 
         return info
@@ -313,7 +343,10 @@ class KIDS_CMC(MonteCarloSampler):
 
         # Annealing ratio
         ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
-        V_x = self.distribution.potential(x)
+        
+        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
+        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+
 
 
         # Richardson-Lucy-like iterations ----------------------------------
@@ -355,6 +388,7 @@ class KIDS_CMC(MonteCarloSampler):
             "proposal": y,
             "rate" : rate,
             "log-weights": u,
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
         }
 
         return info
