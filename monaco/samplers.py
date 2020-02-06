@@ -52,7 +52,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
             u = info.get("log-weights", None)
 
             iters.append(it)
-            rates.append(info["rate"].item())
+            rates.append(info["rate"])
 
             try:
                 probas.append(info["probas"])
@@ -199,7 +199,7 @@ class ParallelMetropolisHastings(MonteCarloSampler):
         x[accept,:] = y[accept,:]  # MCMC update
         
         # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1. * accept).mean().item()
+        rate = (1. * accept).mean()
 
         self.x = x
 
@@ -249,7 +249,7 @@ class CMC(MonteCarloSampler):
         x[accept,:] = y[accept,:]  # MCMC update
         
         # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1. * accept).mean().item()
+        rate = (1. * accept).mean()
 
         self.x = x
 
@@ -309,7 +309,7 @@ class MOKA_CMC(MonteCarloSampler):
         self.proposal.probas = probas
 
         # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1. * accept).mean().item()
+        rate = (1. * accept).mean()
 
         self.x = x
 
@@ -378,7 +378,7 @@ class KIDS_CMC(MonteCarloSampler):
         accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
 
         x[accept,:] = y[accept,:]  # MCMC update
-        rate = (1. * accept).mean().item()
+        rate = (1. * accept).mean()
 
         self.x = x
 
