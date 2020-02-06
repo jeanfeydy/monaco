@@ -52,7 +52,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
             u = info.get("log-weights", None)
 
             iters.append(it)
-            rates.append(info["rate"])
+            rates.append(info["rate"].item())
 
             try:
                 probas.append(info["probas"])
@@ -60,7 +60,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
                 None
 
             try:
-                constants.append(info["normalizing constant"])
+                constants.append(info["normalizing constant"].item())
             except KeyError:
                 None
             
@@ -258,7 +258,7 @@ class CMC(MonteCarloSampler):
             "sample" : x,
             "proposal": y,
             "rate" : rate,
-            "normalizing constant" : (Prop_y - V_y).exp().mean().item(),
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
         }
 
         return info
@@ -318,7 +318,7 @@ class MOKA_CMC(MonteCarloSampler):
             "proposal": y,
             "rate" : rate,
             "probas": probas,
-            "normalizing constant" : (Prop_y - V_y).exp().mean().item(),
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
         }
 
         return info
@@ -388,7 +388,7 @@ class KIDS_CMC(MonteCarloSampler):
             "proposal": y,
             "rate" : rate,
             "log-weights": u,
-            "normalizing constant" : (Prop_y - V_y).exp().mean().item(),
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
         }
 
         return info
