@@ -100,6 +100,7 @@ class EuclideanSpace(object):
         else:  
             ax.plot([0,1,1,0,0], [0,0,1,1,0], 'k')  # unit square
             ax.axis("equal")
+            ax.axis([0,1,0,1])
             ax.axis("off")
 
 
