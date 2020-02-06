@@ -27,13 +27,17 @@ def display_samples(sampler, iterations = 100, runs = 5):
 
     verbosity = sampler.verbose
     sampler.verbose = True
+    
+    start = sampler.x.clone()
+    
     x_prev = sampler.x
     
     iters, rates, errors, fluctuations, probas, constants = [], [], [], [], [], []
 
     for run in range(runs):
+        sampler.x = start.clone()
         
-        if run == 0:
+        if run == runs - 1:
             plt.figure(figsize = (8,8))
 
             display(sampler.space, sampler.distribution.potential, x_prev)
@@ -71,7 +75,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
             except AttributeError:
                 None
 
-            if run == 0 and it + 1 in to_plot:
+            if run == runs - 1 and it + 1 in to_plot:
                 plt.figure(figsize = (8,8))
 
                 try:
@@ -132,7 +136,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     sampler.verbose = verbosity
 
     to_return = {
-        "iteration" : iterations,
+        "iteration" : iters,
         "rate" : rates,
         "normalizing constant" : constants,
         "error" : errors,

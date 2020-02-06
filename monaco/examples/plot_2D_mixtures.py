@@ -13,6 +13,8 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
+plt.rcParams.update({'figure.max_open_warning': 0})
+
 use_cuda = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
