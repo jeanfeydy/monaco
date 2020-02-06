@@ -8,6 +8,8 @@ from matplotlib import pyplot as plt
 
 numpy = lambda x : x.cpu().numpy()
 
+FIGSIZE = (4, 4)  # Small thumbnails for the paper
+
 
 def display(space, potential, sample, proposal_sample=None, proposal_potential=None, true_sample=None):
 
@@ -38,7 +40,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
         sampler.iteration = 0
         
         if run == runs - 1:
-            plt.figure(figsize = (6,6))
+            plt.figure(figsize = FIGSIZE)
 
             display(sampler.space, sampler.distribution.potential, x_prev)
 
@@ -80,7 +82,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
                 None
 
             if run == runs - 1 and it + 1 in to_plot:
-                plt.figure(figsize = (6,6))
+                plt.figure(figsize = FIGSIZE)
 
                 try:
                     display(sampler.space, sampler.distribution.potential, x, y, 
@@ -102,7 +104,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     if rates != []:
         rates = np.array(rates)
 
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize = FIGSIZE
         sns.lineplot(x = np.array(iters), y = np.array(rates), marker = "o", markersize = 6, label="Acceptance rate", ci="sd")
         plt.ylim(0,1)
         plt.xlabel("Iterations")
@@ -111,7 +113,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     if errors != []:
         errors = np.array(errors)
 
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize = FIGSIZE
         sns.lineplot(x = iters, y = errors, marker = "o", markersize = 6, label="Error", ci="sd")
 
     if fluctuations != []:
@@ -125,7 +127,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     if probas != []:
         probas = numpy(torch.stack(probas)).T
 
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize = FIGSIZE
         markers = itertools.cycle(('o', 'X', 'P', 'D', '^', '<', 'v', '>', '*')) 
         for scale, proba, marker in zip(sampler.proposal.s, probas, markers):
             sns.lineplot(x = iters, y = proba, marker = marker, markersize = 6, label="scale = {:.3f}".format(scale), ci="sd")
@@ -135,7 +137,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
 
 
     if constants != []:
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize = FIGSIZE
         constants = np.array(constants)
         sns.lineplot(x = iters, y = constants, marker = "o", markersize = 6, label="Normalizing constant", ci="sd")
 

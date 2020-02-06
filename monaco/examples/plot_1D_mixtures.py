@@ -175,4 +175,29 @@ info["NPAIS"] = display_samples(npais_sampler, iterations = 20, runs = nruns)
 
 
 
+import itertools
+import seaborn as sns
+
+iters = info["PMH"]["iteration"]
+
+def display_line(key, marker):
+    sns.lineplot(x = info[key]["iteration"], y = info[key]["error"], label=key, 
+                 marker = marker, markersize = 6, ci="sd")
+
+plt.figure(figsize=(4,4))
+markers = itertools.cycle(('o', 'X', 'P', 'D', '^', '<', 'v', '>', '*')) 
+
+for key, marker in zip(["PMH", "CMC", "KIDS", "MOKA+KIDS", "NPAIS"], markers):
+    display_line(key, marker)
+
+
+plt.xlabel("Iterations")
+plt.ylabel("ED ( sample, true distribution )")
+plt.ylim(bottom = .001)
+plt.yscale("log")
+
+plt.tight_layout()
+
+
+
 plt.show()

@@ -69,50 +69,119 @@ space.draw_frame()
 
 
 
-#######################################
+########################################
 #
+
+start = .9 + .1 * torch.rand(N, D).type(dtype)
 
 from monaco.euclidean import BallProposal
 
-proposal = BallProposal(space, scale = .05)
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
+
+##########################################
+#
+
+
+
+info = {}
+
+from monaco.samplers import ParallelMetropolisHastings, display_samples
+
+pmh_sampler = ParallelMetropolisHastings(space, start, proposal, annealing = 5).fit(distribution)
+info["PMH"] = display_samples(pmh_sampler, iterations = 20, runs = nruns)
+
 
 ########################################
 #
 
-start = .75 + .25 * torch.rand(N, D).type(dtype)
-
-##########################################
-#
-
-from monaco.samplers import ParallelMetropolisHastings, display_samples
-
-pmh_sampler = ParallelMetropolisHastings(space, start, proposal).fit(distribution)
-display_samples(pmh_sampler, iterations = 100)
-
-
-##########################################
-#
-
 from monaco.samplers import CMC
 
-cmc_sampler = CMC(space, start, proposal).fit(distribution)
-display_samples(cmc_sampler, iterations = 100)
+cmc_sampler = CMC(space, start, proposal, annealing = 5).fit(distribution)
+info["CMC"] = display_samples(cmc_sampler, iterations = 20, runs = nruns)
 
-
-#######################
-#
-
-acmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
-display_samples(acmc_sampler, iterations = 100)
 
 #############################
 #
 
 from monaco.samplers import KIDS_CMC
 
-if False:
-    start = torch.rand(N, D).type(dtype)
-    kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 5).fit(distribution)
-    display_samples(kids_sampler, iterations = 100)
+kids_sampler = KIDS_CMC(space, start, proposal, annealing = 5, iterations = 30).fit(distribution)
+info["KIDS"] = display_samples(kids_sampler, iterations = 20, runs = nruns)
+
+
+#############################
+#
+
+from monaco.samplers import MOKA_CMC
+
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
+
+moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
+info["MOKA"] = display_samples(moka_sampler, iterations = 20, runs = nruns)
+
+
+#############################
+#
+
+from monaco.samplers import MOKA_KIDS_CMC
+
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
+
+kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing = 5, iterations = 30).fit(distribution)
+info["MOKA+KIDS"] = display_samples(kids_sampler, iterations = 20, runs = nruns)
+
+
+
+#############################
+#
+
+from monaco.samplers import NPAIS
+
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
+
+class Q_0(object):
+    def __init__(self):
+        None
+    
+    def sample(self, n):
+        return start = .9 + .1 * torch.rand(N, D).type(dtype)
+
+    def potential(self, x):
+        v = 100000 * torch.ones(len(x), 1).type_as(x)
+        v[(x - .95).abs().max(1)[9] < .05]  = - np.log(1 / .1)
+        return v.view(-1)
+
+q0 = Q_0()
+
+npais_sampler = NPAIS(space, start, proposal, annealing = 5, q0 = q0, N = N).fit(distribution)
+info["NPAIS"] = display_samples(npais_sampler, iterations = 20, runs = nruns)
+
+
+
+
+import itertools
+import seaborn as sns
+
+iters = info["PMH"]["iteration"]
+
+def display_line(key, marker):
+    sns.lineplot(x = info[key]["iteration"], y = info[key]["error"], label=key, 
+                 marker = marker, markersize = 6, ci="sd")
+
+plt.figure(figsize=(4,4))
+markers = itertools.cycle(('o', 'X', 'P', 'D', '^', '<', 'v', '>', '*')) 
+
+for key, marker in zip(["PMH", "CMC", "KIDS", "MOKA+KIDS", "NPAIS"], markers):
+    display_line(key, marker)
+
+
+plt.xlabel("Iterations")
+plt.ylabel("ED ( sample, true distribution )")
+plt.ylim(bottom = .001)
+plt.yscale("log")
+
+plt.tight_layout()
+
+
 
 plt.show()
