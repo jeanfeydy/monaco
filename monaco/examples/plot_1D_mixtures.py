@@ -119,12 +119,10 @@ display_samples(acmc_sampler, iterations = 20, runs = nruns)
 #############################
 #
 
-if False:
-    from monaco.samplers import KIDS_CMC
+from monaco.samplers import KIDS_CMC
 
-    kids_sampler = KIDS_CMC(space, start, proposal, annealing = 10, iterations = 50).fit(distribution)
-    display_samples(kids_sampler, iterations = 20, runs = nruns)
-
+kids_sampler = KIDS_CMC(space, start, proposal, annealing = 5, iterations = 100).fit(distribution)
+display_samples(kids_sampler, iterations = 20, runs = nruns)
 
 
 #############################
@@ -134,7 +132,7 @@ from monaco.samplers import MOKA_CMC
 
 proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
 
-moka_sampler = MOKA_CMC(space, start, proposal, annealing = 10).fit(distribution)
+moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
 display_samples(moka_sampler, iterations = 20, runs = nruns)
 
 

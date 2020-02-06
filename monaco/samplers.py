@@ -348,10 +348,7 @@ class KIDS_CMC(MonteCarloSampler):
         # Annealing ratio
         ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
         
-        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
-        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
-
-
+        V_x = self.distribution.potential(x)
 
         # Richardson-Lucy-like iterations ----------------------------------
         # We look for u such that
@@ -364,7 +361,7 @@ class KIDS_CMC(MonteCarloSampler):
         u = target
         for it in range(self.nits):
             offset = target + self.proposal.potential(x, u)(x)
-            # offset = - proposal.potential(x, offset)(x)  # Genuine Richardson-Lucy would have this line too
+            offset = - self.proposal.potential(x, offset)(x)  # Genuine Richardson-Lucy would have this line too
             u = u + offset
 
         u = u - u.logsumexp(0)  # Normalize the proposal
@@ -375,9 +372,12 @@ class KIDS_CMC(MonteCarloSampler):
         indices = torch.from_numpy(indices).to(x.device)
         y = self.proposal.sample(x[indices,:])  # Proposal
 
+        V_y = self.distribution.potential(y)
+        Prop_x, Prop_y = self.proposal.potential(x, u)(x), self.proposal.potential(x, u)(y)
+
+
         # Logarithm of the CMC ratio:
-        scores = ratio * (V_x - self.distribution.potential(y)) \
-                + self.proposal.potential(x, u)(y) - self.proposal.potential(x, u)(x)
+        scores = ratio * (V_x - V_y) + Prop_y - Prop_x
 
         accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
 
