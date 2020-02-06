@@ -67,8 +67,6 @@ elif test_case == "ackley":
 
     distribution = UnitPotential(space, ackley_potential)
 
-print(ackley_potential(torch.FloatTensor([.5])))
-
 
 
 # Display the initial configuration:
