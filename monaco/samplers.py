@@ -30,12 +30,12 @@ def display_samples(sampler, iterations = 100, runs = 5):
     
     start = sampler.x.clone()
     
-    x_prev = sampler.x
-    
     iters, rates, errors, fluctuations, probas, constants = [], [], [], [], [], []
 
     for run in range(runs):
-        sampler.x = start.clone()
+        x_prev = start.clone()
+        sampler.x[:] = start.clone()
+        sampler.iteration = 0
         
         if run == runs - 1:
             plt.figure(figsize = (8,8))
@@ -96,7 +96,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     iters, rates = np.array(iters), np.array(rates)
 
     plt.figure(figsize=(12,8))
-    sns.lineplot(x = np.array(iters), y = np.array(rates), markers = True, label="Acceptance rate")
+    sns.lineplot(x = np.array(iters), y = np.array(rates), markers = True, label="Acceptance rate", ci="sd")
     plt.ylim(0,1)
     plt.xlabel("Iterations")
     plt.tight_layout()
@@ -104,11 +104,11 @@ def display_samples(sampler, iterations = 100, runs = 5):
     if errors != []:
         plt.figure(figsize=(8,8))
         errors = np.array(errors)
-        sns.lineplot(x = iters, y = errors, markers = True, label="Error")
+        sns.lineplot(x = iters, y = errors, markers = True, label="Error", ci="sd")
 
     if fluctuations != []:
         fluctuations = np.array(fluctuations)
-        sns.lineplot(x = iters, y = fluctuations, markers = True, label="Fluctuations")
+        sns.lineplot(x = iters, y = fluctuations, markers = True, label="Fluctuations", ci="sd")
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
         plt.tight_layout()
@@ -117,7 +117,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
         plt.figure(figsize=(8,8))
         probas = numpy(torch.stack(probas)).T
         for scale, proba in zip(sampler.proposal.s, probas):
-            sns.lineplot(x = iters, y = proba, markers = True, label="scale = {:.3f}".format(scale))
+            sns.lineplot(x = iters, y = proba, markers = True, label="scale = {:.3f}".format(scale), ci="sd")
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
         plt.tight_layout()
@@ -126,7 +126,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
     if constants != []:
         plt.figure(figsize=(8,8))
         constants = np.array(constants)
-        sns.lineplot(x = iters, y = constants, markers = True, label="Normalizing constant")
+        sns.lineplot(x = iters, y = constants, markers = True, label="Normalizing constant", ci="sd")
 
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
