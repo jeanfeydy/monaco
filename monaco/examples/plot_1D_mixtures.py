@@ -87,7 +87,7 @@ start[:Nlucky] = .9
 
 from monaco.euclidean import BallProposal
 
-proposal = BallProposal(space, scale = .05)
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
 
 ##########################################
 #

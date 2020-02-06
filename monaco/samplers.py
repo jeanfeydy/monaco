@@ -11,8 +11,8 @@ numpy = lambda x : x.cpu().numpy()
 
 def display(space, potential, sample, proposal_sample=None, proposal_potential=None, true_sample=None):
 
-    if true_sample is not None:
-        space.scatter(true_sample, "red")
+    #if true_sample is not None:
+    #    space.scatter(true_sample, "red")
 
     if proposal_sample is not None:
         space.scatter(proposal_sample, "green")
@@ -329,7 +329,7 @@ class MOKA_CMC(MonteCarloSampler):
 
 
 
-
+from scipy import stats
 
 class KIDS_CMC(MonteCarloSampler):
     """Kernel Importance-by-Deconvolution Sampling Collective Monte-Carlo."""
@@ -365,7 +365,7 @@ class KIDS_CMC(MonteCarloSampler):
             u = u + offset
 
         u = u - u.logsumexp(0)  # Normalize the proposal
-
+        print(stats.describe(numpy(N * u.exp())))
 
         # Importance sampling: ---------------------------------------------
         indices = np.random.choice(N, size = N, p = numpy(u.exp()))
