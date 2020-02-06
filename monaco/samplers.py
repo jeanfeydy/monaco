@@ -199,7 +199,7 @@ class ParallelMetropolisHastings(MonteCarloSampler):
         x[accept,:] = y[accept,:]  # MCMC update
         
         # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1. * accept).mean()
+        rate = (1. * accept).mean().item()
 
         self.x = x
 
@@ -249,7 +249,7 @@ class CMC(MonteCarloSampler):
         x[accept,:] = y[accept,:]  # MCMC update
         
         # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1. * accept).mean()
+        rate = (1. * accept).mean().item()
 
         self.x = x
 
@@ -258,7 +258,7 @@ class CMC(MonteCarloSampler):
             "sample" : x,
             "proposal": y,
             "rate" : rate,
-            "normalizing constant" : (Prop_y - V_y).exp().mean(),
+            "normalizing constant" : (Prop_y - V_y).exp().mean().item(),
         }
 
         return info
@@ -309,7 +309,7 @@ class MOKA_CMC(MonteCarloSampler):
         self.proposal.probas = probas
 
         # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1. * accept).mean()
+        rate = (1. * accept).mean().item()
 
         self.x = x
 
@@ -318,7 +318,7 @@ class MOKA_CMC(MonteCarloSampler):
             "proposal": y,
             "rate" : rate,
             "probas": probas,
-            "normalizing constant" : (Prop_y - V_y).exp().mean(),
+            "normalizing constant" : (Prop_y - V_y).exp().mean().item(),
         }
 
         return info
@@ -378,7 +378,7 @@ class KIDS_CMC(MonteCarloSampler):
         accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
 
         x[accept,:] = y[accept,:]  # MCMC update
-        rate = (1. * accept).mean()
+        rate = (1. * accept).mean().item()
 
         self.x = x
 
@@ -388,7 +388,7 @@ class KIDS_CMC(MonteCarloSampler):
             "proposal": y,
             "rate" : rate,
             "log-weights": u,
-            "normalizing constant" : (Prop_y - V_y).exp().mean(),
+            "normalizing constant" : (Prop_y - V_y).exp().mean().item(),
         }
 
         return info
