@@ -38,7 +38,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
         sampler.iteration = 0
         
         if run == runs - 1:
-            plt.figure(figsize = (8,8))
+            plt.figure(figsize = (6,6))
 
             display(sampler.space, sampler.distribution.potential, x_prev)
 
@@ -52,11 +52,15 @@ def display_samples(sampler, iterations = 100, runs = 5):
         for it, info in enumerate(sampler):
             
             x = info["sample"]
-            y = info["proposal"]
+            y = info.get("proposal", None)
             u = info.get("log-weights", None)
 
             iters.append(it)
-            rates.append(info["rate"].item())
+
+            try:
+                rates.append(info["rate"].item())
+            except KeyError:
+                None
 
             try:
                 probas.append(info["probas"])
@@ -76,7 +80,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
                 None
 
             if run == runs - 1 and it + 1 in to_plot:
-                plt.figure(figsize = (8,8))
+                plt.figure(figsize = (6,6))
 
                 try:
                     display(sampler.space, sampler.distribution.potential, x, y, 
@@ -93,40 +97,47 @@ def display_samples(sampler, iterations = 100, runs = 5):
             if it > iterations:
                 break
 
-    iters, rates = np.array(iters), np.array(rates)
+    iters = np.array(iters)
 
-    plt.figure(figsize=(12,8))
-    sns.lineplot(x = np.array(iters), y = np.array(rates), markers = True, label="Acceptance rate", ci="sd")
-    plt.ylim(0,1)
-    plt.xlabel("Iterations")
-    plt.tight_layout()
+    if rates != []:
+        rates = np.array(rates)
+
+        plt.figure(figsize=(6,6))
+        sns.lineplot(x = np.array(iters), y = np.array(rates), marker = "o", markersize = 6, label="Acceptance rate", ci="sd")
+        plt.ylim(0,1)
+        plt.xlabel("Iterations")
+        plt.tight_layout()
 
     if errors != []:
-        plt.figure(figsize=(8,8))
         errors = np.array(errors)
-        sns.lineplot(x = iters, y = errors, markers = True, label="Error", ci="sd")
+
+        plt.figure(figsize=(6,6))
+        sns.lineplot(x = iters, y = errors, marker = "o", markersize = 6, label="Error", ci="sd")
 
     if fluctuations != []:
         fluctuations = np.array(fluctuations)
-        sns.lineplot(x = iters, y = fluctuations, markers = True, label="Fluctuations", ci="sd")
+
+        sns.lineplot(x = iters, y = fluctuations, marker = "X", markersize = 6, label="Fluctuations", ci="sd")
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
         plt.tight_layout()
 
     if probas != []:
-        plt.figure(figsize=(8,8))
         probas = numpy(torch.stack(probas)).T
-        for scale, proba in zip(sampler.proposal.s, probas):
-            sns.lineplot(x = iters, y = proba, markers = True, label="scale = {:.3f}".format(scale), ci="sd")
+
+        plt.figure(figsize=(6,6))
+        markers = itertools.cycle(('o', 'X', 'P', 'D', '^', '<', 'v', '>', '*')) 
+        for scale, proba, marker in zip(sampler.proposal.s, probas, markers):
+            sns.lineplot(x = iters, y = proba, marker = marker, markersize = 6, label="scale = {:.3f}".format(scale), ci="sd")
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
         plt.tight_layout()
 
 
     if constants != []:
-        plt.figure(figsize=(8,8))
+        plt.figure(figsize=(6,6))
         constants = np.array(constants)
-        sns.lineplot(x = iters, y = constants, markers = True, label="Normalizing constant", ci="sd")
+        sns.lineplot(x = iters, y = constants, marker = "o", markersize = 6, label="Normalizing constant", ci="sd")
 
         plt.xlabel("Iterations")
         plt.ylim(bottom = 0.)
@@ -221,6 +232,74 @@ class ParallelMetropolisHastings(MonteCarloSampler):
 
 
 
+class NPAIS(MonteCarloSampler):
+    """Non-parametric adaptive importance sampling."""
+
+    def __init__(self, space, start, proposal, annealing = None, q0 = None, N = 1, verbose = False):
+        super().__init__(space, start, proposal, verbose = verbose)
+        self.annealing = annealing
+        self.q0 = q0
+        self.N  = N
+        self.dtype = space.dtype
+
+
+    def importance_sampling(self, n):
+        log_weights = self.scores - self.scores.logsumexp(0)
+        indices = np.random.choice(len(self.memory), size = n, p = numpy(log_weights.exp()))
+        indices = torch.from_numpy(indices).to(self.memory.device)
+        return self.memory[indices, :]
+
+
+    def update(self):
+
+        if self.iteration == 0:
+            self.memory = self.q0.sample(self.N)
+            self.scores = self.q0.potential(self.memory) - self.distribution.potential(self.memory)  # Pi / Q0
+
+        # Annealing ratio: weight of the defensive sample
+        lambda_t = 0. if self.annealing is None else np.exp(- self.iteration / self.annealing)
+
+        # Choose to sample from the mixture or the defensive initialization:
+        # defensive == 0 if mixture, 1 if sample from q0:
+        defensive = torch.rand(self.N).type(self.dtype) < lambda_t
+
+        n_defense = int( (1. * defensive).sum().item() )
+        defenders = self.q0.sample(n_defense)
+
+        attackers = self.importance_sampling(self.N - n_defense)
+        attackers = self.proposal.sample(attackers)
+
+        new_points = torch.cat((defenders, attackers), dim = 0)
+        # Potential for the new points:
+        new_potentials = self.distribution.potential(new_points)
+
+        # Compute the scores for the attackers and defenders:
+        defense_scores = self.q0.potential(new_points)
+
+        log_weights = self.scores - self.scores.logsumexp(0)
+        mixture_scores = self.proposal.potential(self.memory, log_weights)(new_points)
+
+        new_scores = - ( (1 - lambda_t) * (-mixture_scores).exp() + lambda_t * (-defense_scores).exp() ).log() - new_potentials
+
+        # Add to memory and scores:
+        self.memory = torch.cat((self.memory, new_points), dim = 0)
+        self.scores = torch.cat((self.scores, new_scores), dim = 0)
+
+        # Return a sample of size N:
+        x = self.importance_sampling(self.N)
+
+        info = {
+            "sample" : x,
+        }
+
+        return info
+
+
+
+
+
+
+
 
 
 
@@ -303,7 +382,10 @@ class MOKA_CMC(MonteCarloSampler):
         for i in range(len(probas)):
             # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
             scores_i = scores[scale_indices == i]
-            avg_score[i] = scores_i.sum() / (1 + len(scores_i))
+            if len(scores_i) == 0:
+                avg_score[i] = 0.
+            else:
+                avg_score[i] = scores_i.mean()
 
         avg_score = avg_score - avg_score.logsumexp(0)
 
@@ -342,8 +424,6 @@ class KIDS_CMC(MonteCarloSampler):
     def update(self):
         x = self.x
         N = len(x)
-        indices = torch.randint(N, size = (N,)).to(x.device)
-        y = self.proposal.sample(x[indices,:])  # Proposal
 
         # Annealing ratio
         ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
@@ -418,8 +498,6 @@ class MOKA_KIDS_CMC(MonteCarloSampler):
     def update(self):
         x = self.x
         N = len(x)
-        indices = torch.randint(N, size = (N,)).to(x.device)
-        y, scale_indices = self.proposal.sample_indices(x[indices,:])  # Proposal
 
         # Annealing ratio
         ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
@@ -446,7 +524,7 @@ class MOKA_KIDS_CMC(MonteCarloSampler):
         # Importance sampling: ---------------------------------------------
         indices = np.random.choice(N, size = N, p = numpy(u.exp()))
         indices = torch.from_numpy(indices).to(x.device)
-        y = self.proposal.sample(x[indices,:])  # Proposal
+        y, scale_indices = self.proposal.sample_indices(x[indices,:])  # Proposal
 
         V_y = self.distribution.potential(y)
         Prop_x, Prop_y = self.proposal.potential(x, u)(x), self.proposal.potential(x, u)(y)
@@ -467,7 +545,10 @@ class MOKA_KIDS_CMC(MonteCarloSampler):
         for i in range(len(probas)):
             # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
             scores_i = scores[scale_indices == i]
-            avg_score[i] = scores_i.sum() / (1 + len(scores_i))
+            if len(scores_i) == 0:
+                avg_score[i] = 0.
+            else:
+                avg_score[i] = scores_i.mean()
 
         avg_score = avg_score - avg_score.logsumexp(0)
 
