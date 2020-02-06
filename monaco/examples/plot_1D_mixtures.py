@@ -136,4 +136,17 @@ moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
 display_samples(moka_sampler, iterations = 20, runs = nruns)
 
 
+
+#############################
+#
+
+from monaco.samplers import MOKA_KIDS_CMC
+
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
+
+kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing = 5, iterations = 100).fit(distribution)
+display_samples(kids_sampler, iterations = 20, runs = nruns)
+
+
+
 plt.show()

@@ -365,7 +365,7 @@ class KIDS_CMC(MonteCarloSampler):
             u = u + offset
 
         u = u - u.logsumexp(0)  # Normalize the proposal
-        print(stats.describe(numpy(N * u.exp())))
+        # print(stats.describe(numpy(N * u.exp())))
 
         # Importance sampling: ---------------------------------------------
         indices = np.random.choice(N, size = N, p = numpy(u.exp()))
@@ -393,6 +393,99 @@ class KIDS_CMC(MonteCarloSampler):
             "rate" : rate,
             "log-weights": u,
             "normalizing constant" : (Prop_y - V_y).exp().mean(),
+        }
+
+        return info
+
+
+
+
+
+
+
+
+
+
+
+class MOKA_KIDS_CMC(MonteCarloSampler):
+    """Kernel Importance-by-Deconvolution Sampling Collective Monte-Carlo."""
+
+    def __init__(self, space, start, proposal, annealing = None, verbose = False, iterations = 100):
+        super().__init__(space, start, proposal, verbose = verbose)
+        self.annealing = annealing
+        self.nits = iterations
+
+    def update(self):
+        x = self.x
+        N = len(x)
+        indices = torch.randint(N, size = (N,)).to(x.device)
+        y, scale_indices = self.proposal.sample_indices(x[indices,:])  # Proposal
+
+        # Annealing ratio
+        ratio = 1 if self.annealing is None else 1 - np.exp(- self.iteration / self.annealing)
+        
+        V_x = self.distribution.potential(x)
+
+        # Richardson-Lucy-like iterations ----------------------------------
+        # We look for u such that
+        #   proposal.potential(x, u)(x_i) = - log( k * e^u ) (x_i) = q * V(x_i)
+        #
+        target = - ratio * V_x
+        target = target - target.logsumexp(0)  # Normalize the target log-likelihood
+
+        #u = (- np.log(N) * np.ones(N)).astype(dtype)
+        u = target
+        for it in range(self.nits):
+            offset = target + self.proposal.potential(x, u)(x)
+            offset = - self.proposal.potential(x, offset)(x)  # Genuine Richardson-Lucy would have this line too
+            u = u + offset
+
+        u = u - u.logsumexp(0)  # Normalize the proposal
+        # print(stats.describe(numpy(N * u.exp())))
+
+        # Importance sampling: ---------------------------------------------
+        indices = np.random.choice(N, size = N, p = numpy(u.exp()))
+        indices = torch.from_numpy(indices).to(x.device)
+        y = self.proposal.sample(x[indices,:])  # Proposal
+
+        V_y = self.distribution.potential(y)
+        Prop_x, Prop_y = self.proposal.potential(x, u)(x), self.proposal.potential(x, u)(y)
+
+
+        # Logarithm of the CMC ratio:
+        scores = ratio * (V_x - V_y) + Prop_y - Prop_x
+
+        accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
+
+        x[accept,:] = y[accept,:]  # MCMC update
+        rate = (1. * accept).mean()
+
+
+        # Update the kernel probabilities:
+        probas = self.proposal.probas.clone()
+        avg_score = self.proposal.probas.clone()
+        for i in range(len(probas)):
+            # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
+            scores_i = scores[scale_indices == i]
+            avg_score[i] = scores_i.sum() / (1 + len(scores_i))
+
+        avg_score = avg_score - avg_score.logsumexp(0)
+
+        probas = avg_score.exp()
+        
+        probas = probas / probas.sum()
+        self.proposal.probas = probas
+
+        self.x = x
+
+
+        info = {
+            "sample" : x,
+            "proposal": y,
+            "rate" : rate,
+            "log-weights": u,
+            "normalizing constant" : (Prop_y - V_y).exp().mean(),
+            "probas": probas,
         }
 
         return info
