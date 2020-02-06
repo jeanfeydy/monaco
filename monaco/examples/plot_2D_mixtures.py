@@ -32,6 +32,7 @@ space = EuclideanSpace(dimension = D, dtype = dtype)
 
 from monaco.euclidean import GaussianMixture
 
+nruns = 2
 N, M = (2000 if use_cuda else 50), 5
 
 # Let's generate a blend of peaky Gaussians, in the unit square:
@@ -144,7 +145,7 @@ class Q_0(object):
         None
     
     def sample(self, n):
-        return start = .9 + .1 * torch.rand(N, D).type(dtype)
+        return .9 + .1 * torch.rand(n, D).type(dtype)
 
     def potential(self, x):
         v = 100000 * torch.ones(len(x), 1).type_as(x)
