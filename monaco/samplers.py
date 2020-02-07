@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 numpy = lambda x : x.cpu().numpy()
 
-FIGSIZE = (4, 4)  # Small thumbnails for the paper
+FIGSIZE = (8, 8)  # Small thumbnails for the paper
 
 
 def display(space, potential, sample, proposal_sample=None, proposal_potential=None, true_sample=None):

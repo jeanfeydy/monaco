@@ -35,10 +35,12 @@ except IOError:
 
     print(dataset.data.shape)
 
-    features, labels = dataset.data[:10000], dataset.target[:10000].astype('int64')
+    features, labels = dataset.data, dataset.target.astype('int64')
 
     hyperbolic_mapper = umap.UMAP(target_metric='hyperboloid',
                                 random_state=42).fit(features)
+
+    print("Hyperbolic embedding computed")
 
     x = hyperbolic_mapper.embedding_[:, 0]
     y = hyperbolic_mapper.embedding_[:, 1]
@@ -164,14 +166,216 @@ distribution = DistanceDistribution(target)
 #########################################
 #
 
-from monaco.samplers import CMC, display_samples
+from monaco.samplers import MOKA_CMC
 
 N = 10000 if use_cuda else 50
 start = 1. + torch.rand(N, 2).type(dtype)
 
-proposal = BallProposal(space, scale = 2.)
+proposal = BallProposal(space, scale = [.1, .2, .5, 1., 2., 5.])
 
-cmc_sampler = CMC(space, start, proposal, annealing = 20).fit(distribution)
-display_samples(cmc_sampler, iterations = 100, runs = 5)
+moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
+
+
+
+import numpy as np
+import itertools
+import torch
+
+import seaborn as sns
+from matplotlib import pyplot as plt
+
+numpy = lambda x : x.cpu().numpy()
+
+FIGSIZE = (4, 4)  # Small thumbnails for the paper
+
+
+def display(space, potential, sample, proposal_sample=None, proposal_potential=None, true_sample=None):
+
+    #if true_sample is not None:
+    #    space.scatter(true_sample, "red")
+
+    if proposal_sample is not None:
+        space.scatter(proposal_sample, "green")
+
+    space.plot(potential, "red")
+    space.scatter(sample, "blue")
+
+    space.draw_frame()
+
+
+
+def chamfer_distance(sou, tar):
+    x_i = LazyTensor(sou[:,None,:])
+    y_j = LazyTensor(tar[None,:,:])
+
+    D_ij = ((x_i - y_j)**2).sum(-1)
+    D_ij = 1 + D_ij / (2 * x_i[1] * y_j[1])
+    D_ij = (D_ij + (D_ij**2 - 1).sqrt()).log()
+
+    V_i = D_ij.min(dim=1)
+
+    return V_i.mean().item()
+
+
+
+
+def display_samples(sampler, iterations = 100, runs = 5):
+
+    verbosity = sampler.verbose
+    sampler.verbose = True
+    
+    start = sampler.x.clone()
+    
+    iters, rates, errors, fluctuations, probas, constants = [], [], [], [], [], []
+
+    source_to_target, target_to_source = [], []
+
+    for run in range(runs):
+        x_prev = start.clone()
+        sampler.x[:] = start.clone()
+        sampler.iteration = 0
+        
+        if run == runs - 1:
+            plt.figure(figsize = (8,8))
+
+            display(sampler.space, sampler.distribution.potential, x_prev)
+
+            plt.title(f"it = 0")
+            plt.tight_layout()
+        
+        
+        to_plot = [1, 2, 5, 10, 20, 50, 100]
+        
+
+        for it, info in enumerate(sampler):
+            
+            x = info["sample"]
+            y = info.get("proposal", None)
+            u = info.get("log-weights", None)
+
+            source_to_target.append( chamfer_distance(x, target) )
+            target_to_source.append( chamfer_distance(target, x) )
+
+            iters.append(it)
+
+            try:
+                rates.append(info["rate"].item())
+            except KeyError:
+                None
+
+            try:
+                probas.append(info["probas"])
+            except KeyError:
+                None
+
+            try:
+                constants.append(info["normalizing constant"].item())
+            except KeyError:
+                None
+            
+            try:
+                N = len(x)
+                errors.append( sampler.space.discrepancy(x, sampler.distribution.sample(N)).item() )
+                fluctuations.append( sampler.space.discrepancy(sampler.distribution.sample(N), sampler.distribution.sample(N)).item() )
+            except AttributeError:
+                None
+
+            if run == runs - 1 and it + 1 in to_plot:
+                plt.figure(figsize = (8,8))
+
+                try:
+                    display(sampler.space, sampler.distribution.potential, x, y, 
+                            sampler.proposal.potential(x_prev, u), 
+                            sampler.distribution.sample(len(x)) )
+                except AttributeError:
+                    display(sampler.space, sampler.distribution.potential, x, y)
+
+                plt.title(f"it = {it+1}")
+                plt.tight_layout()
+
+            x_prev = x
+
+            if it > iterations:
+                break
+
+    iters = np.array(iters)
+
+    if rates != []:
+        rates = np.array(rates)
+
+        plt.figure(figsize = FIGSIZE)
+        sns.lineplot(x = np.array(iters), y = np.array(rates), marker = "o", markersize = 6, label="Acceptance rate", ci="sd")
+        plt.ylim(0,1)
+        plt.xlabel("Iterations")
+        plt.tight_layout()
+
+    if errors != []:
+        errors = np.array(errors)
+
+        plt.figure(figsize = FIGSIZE)
+        sns.lineplot(x = iters, y = errors, marker = "o", markersize = 6, label="Error", ci="sd")
+
+    if fluctuations != []:
+        fluctuations = np.array(fluctuations)
+
+        sns.lineplot(x = iters, y = fluctuations, marker = "X", markersize = 6, label="Fluctuations", ci="sd")
+        plt.xlabel("Iterations")
+        plt.ylim(bottom = 0.)
+        plt.tight_layout()
+
+    if probas != []:
+        probas = numpy(torch.stack(probas)).T
+
+        plt.figure(figsize = FIGSIZE)
+        markers = itertools.cycle(('o', 'X', 'P', 'D', '^', '<', 'v', '>', '*')) 
+        for scale, proba, marker in zip(sampler.proposal.s, probas, markers):
+            sns.lineplot(x = iters, y = proba, marker = marker, markersize = 6, label="scale = {:.3f}".format(scale), ci="sd")
+        plt.xlabel("Iterations")
+        plt.ylim(bottom = 0.)
+        plt.tight_layout()
+
+
+    if constants != []:
+        plt.figure(figsize = FIGSIZE)
+
+        constants = np.array(constants)
+        sns.lineplot(x = iters, y = constants, marker = "o", markersize = 6, label="Normalizing constant", ci="sd")
+
+        plt.xlabel("Iterations")
+        plt.ylim(bottom = 0.)
+        plt.tight_layout()
+
+
+    source_to_target = np.array(source_to_target)
+    target_to_source = np.array(target_to_source)
+
+    plt.figure(figsize = FIGSIZE)
+    
+    sns.lineplot(x = iters, y = source_to_target, marker = "o", markersize = 6, label="Sample -> MNIST", ci="sd")
+    sns.lineplot(x = iters, y = target_to_source, marker = "o", markersize = 6, label="MNIST -> Sample", ci="sd")
+
+    plt.xlabel("Iterations")
+    #plt.ylim(bottom = 0.)
+    plt.yscale("log")
+    plt.tight_layout()
+
+    sampler.verbose = verbosity
+
+    to_return = {
+        "iteration" : iters,
+        "rate" : rates,
+        "normalizing constant" : constants,
+        "error" : errors,
+        "fluctuation" : fluctuations,
+        "probas" : probas,
+        "source_to_target": source_to_target,
+        "target_to_source": target_to_source,
+    }
+
+    return to_return
+
+
+
+info = display_samples(moka_sampler, iterations = 20, runs = 50)
 
 plt.show()
