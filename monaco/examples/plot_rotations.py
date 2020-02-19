@@ -13,6 +13,10 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
+import warnings
+import matplotlib.cbook
+
+warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 use_cuda = torch.cuda.is_available()
@@ -29,7 +33,7 @@ space = Rotations(dtype = dtype)
 #######################################
 #
 
-N = 2000 if use_cuda else 50
+N = 10000 if use_cuda else 50
 
 ref = torch.ones(N,1).type(dtype) * torch.FloatTensor([1, 0, 0, 0]).type(dtype)
 ref2 = torch.ones(N,1).type(dtype) * torch.FloatTensor([1, 5, 5, 0]).type(dtype)
@@ -38,7 +42,7 @@ ref = torch.cat((ref, ref2), dim=0)
 
 from monaco.rotations import BallProposal
 
-proposal = BallProposal(space, scale = .1)
+proposal = BallProposal(space, scale = .5)
 
 x = proposal.sample(ref)
 
@@ -91,7 +95,10 @@ from monaco.samplers import CMC, display_samples
 
 start = space.uniform_sample(N)
 cmc_sampler = CMC(space, start, proposal).fit(distribution)
-display_samples(cmc_sampler, iterations = 100, runs = 5)
+# display_samples(cmc_sampler, iterations = 100, runs = 5)
+
+
+
 
 
 
@@ -105,10 +112,10 @@ display_samples(cmc_sampler, iterations = 100, runs = 5)
 from monaco.rotations import quat_to_matrices
 
 class ProcrustesDistribution(object):
-    def __init__(self, source, target, strength = 1.):
+    def __init__(self, source, target, temperature = 1.):
         self.source = source
         self.target = target
-        self.strength = strength
+        self.temperature = temperature
 
     def potential(self, q):
         """Evaluates the potential on the point cloud x."""
@@ -116,10 +123,12 @@ class ProcrustesDistribution(object):
         models = R @ self.source.t()  # (N, 3, npoints)
 
         V_i = ((models - self.target.t().view(1,3,-1))**2).mean(2).sum(1)
-        print(V_i.mean().item())
 
-        return self.strength * V_i.view(-1)  # (N,)
+        return V_i.view(-1) / (2 * self.temperature)  # (N,)
 
+
+#########################################
+#
 
 def load_csv(fname):
     x = np.loadtxt(fname, skiprows = 1, delimiter = ',')
@@ -132,23 +141,29 @@ def load_csv(fname):
 A = load_csv("data/Ca1UBQ.csv")
 B = load_csv("data/Ca1D3Z_1.csv")
 
-distribution = ProcrustesDistribution(A, B, strength = 10000.)
+distribution = ProcrustesDistribution(A, B, temperature = 1e-4)
 
 #########################################
 #
 
-from monaco.samplers import CMC, display_samples
+
+from monaco.samplers import MOKA_CMC, display_samples
 
 N = 10000 if use_cuda else 50
 
 start = space.uniform_sample(N)
-proposal = BallProposal(space, scale = .1)
+proposal = BallProposal(space, scale = [.1, .2, .5, 1., 2.])
 
-cmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
-display_samples(cmc_sampler, iterations = 100, runs = 5)
+moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
+display_samples(moka_sampler, iterations = 100, runs = 2);
 
 
 
+
+##################################################
+#
+
+N = 10000
 
 from monaco.rotations import quat_to_matrices
 from geomloss import SamplesLoss
@@ -157,10 +172,10 @@ wasserstein = SamplesLoss("sinkhorn", p=2, blur=.05)
 
 
 class WassersteinDistribution(object):
-    def __init__(self, source, target, strength = 1.):
+    def __init__(self, source, target, temperature = 1.):
         self.source = source
         self.target = target
-        self.strength = strength
+        self.temperature = temperature
 
     def potential(self, q):
         """Evaluates the potential on the point cloud x."""
@@ -173,8 +188,23 @@ class WassersteinDistribution(object):
         
         V_i = wasserstein(models, targets)
 
-        return self.strength * V_i.view(-1)  # (N,)
+        return V_i.view(-1) / self.temperature  # (N,)
 
+
+
+distribution = WassersteinDistribution(A, B, temperature = 1e-4)
+
+start = space.uniform_sample(N)
+proposal = BallProposal(space, scale = [.1, .2, .5, 1., 2.])
+
+moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
+display_samples(moka_sampler, iterations = 100, runs = 1);
+
+
+
+
+#############################################
+#
 
 def load_coordinates(coordinates):
     x = torch.FloatTensor(coordinates).type(dtype)
@@ -186,19 +216,14 @@ def load_coordinates(coordinates):
 A = load_coordinates([[1., 0., 0.], [-1., 0., 0.]])
 B = load_coordinates([[0., 1., 0.], [0., -1., 0.]])
 
-distribution = WassersteinDistribution(A, B, strength = 10000.)
+distribution = WassersteinDistribution(A, B, temperature = 1e-4)
 
-#########################################
-#
-
-from monaco.samplers import CMC, display_samples
-
-N = 10000 if use_cuda else 50
 
 start = space.uniform_sample(N)
-proposal = BallProposal(space, scale = .1)
+proposal = BallProposal(space, scale = [.1, .2, .5, 1., 2.])
 
-cmc_sampler = CMC(space, start, proposal, annealing = 10).fit(distribution)
-display_samples(cmc_sampler, iterations = 100, runs = 1)
+moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
+display_samples(moka_sampler, iterations = 100, runs = 2)
+
 
 plt.show()
