@@ -38,6 +38,9 @@ space = EuclideanSpace(dimension = D, dtype = dtype)
 
 from monaco.euclidean import UnitPotential
 
+N, M = (10000 if use_cuda else 50), 5
+nruns = 5
+
 def sinc_potential(x, stripes = 3):
     sqnorm = (x**2).sum(-1)
     V_i = np.pi * stripes * sqnorm
