@@ -1,13 +1,19 @@
 """
-Sampling on the Poincaré disk
+Sampling on the Poincare disk
 ===============================
 
-Blabla
+Let's illustrate the versatility of our toolbox
+by sampling an arbitrary distribution in the hyperbolic plane.
 
 """
 
 ######################
-# Blabla
+# Introduction
+# ---------------------
+#
+# First of all, we use the umap algorithm to embed the MNIST dataset in
+# the Poincare disk:
+#
 
 
 import torch
@@ -65,7 +71,7 @@ ax.axis('off');
 
 
 ##########################################
-#
+# We then create a hyperbolic space of dimension 2, and visualize our embedding:
 
 from monaco.hyperbolic import HyperbolicSpace, disk_to_halfplane
 
@@ -91,7 +97,10 @@ space.draw_frame()
 
 
 ####################################
-#
+# Under the hood, the Monaco package relies on the Poincare half-plane plane
+# but displays all results in the Poincare disk.
+# Here, we display two uniform samples in hyperbolic disks of radius 1.75.
+# 
 
 from monaco.hyperbolic import BallProposal
 
@@ -136,7 +145,12 @@ plt.yscale('log')
 
 
 ####################################
+# Monte Carlo sampling
+# -----------------------------
 #
+# We define an arbitrary potential in the hyperbolic plane:
+# 10 times the square root of the distance to the nearest point
+# in our MNIST embedding.
 
 
 from pykeops.torch import LazyTensor
@@ -165,6 +179,8 @@ distribution = DistanceDistribution(target)
 
 #########################################
 #
+# We then rely on the MOKA algorithm to generate samples efficiently.
+#
 
 from monaco.samplers import MOKA_CMC
 
@@ -176,6 +192,8 @@ proposal = BallProposal(space, scale = [.1, .2, .5, 1., 2., 5.])
 moka_sampler = MOKA_CMC(space, start, proposal, annealing = 5).fit(distribution)
 
 
+############################################
+# The code below generates some custom plots for our paper.
 
 import numpy as np
 import itertools
@@ -188,11 +206,11 @@ numpy = lambda x : x.cpu().numpy()
 
 FIGSIZE = (4, 4)  # Small thumbnails for the paper
 
+#############################################
+# Fancy display of the current configuration:
+#
 
 def display(space, potential, sample, proposal_sample=None, proposal_potential=None, true_sample=None):
-
-    #if true_sample is not None:
-    #    space.scatter(true_sample, "red")
 
     if proposal_sample is not None:
         space.scatter(proposal_sample, "green")
@@ -202,7 +220,9 @@ def display(space, potential, sample, proposal_sample=None, proposal_potential=N
 
     space.draw_frame()
 
-
+##############################################
+# Distances to the nearest neighbor:
+#
 
 def chamfer_distance(sou, tar):
     x_i = LazyTensor(sou[:,None,:])
@@ -217,6 +237,9 @@ def chamfer_distance(sou, tar):
     return V_i.mean().item()
 
 
+#############################################
+# Full results and statistics:
+#
 
 
 def display_samples(sampler, iterations = 100, runs = 5):
@@ -375,6 +398,8 @@ def display_samples(sampler, iterations = 100, runs = 5):
     return to_return
 
 
+#####################################################
+# We're good to go!
 
 info = display_samples(moka_sampler, iterations = 20, runs = 50)
 

@@ -12,9 +12,7 @@ FIGSIZE = (8, 8)  # Small thumbnails for the paper
 
 
 def display(space, potential, sample, proposal_sample=None, proposal_potential=None, true_sample=None):
-
-    #if true_sample is not None:
-    #    space.scatter(true_sample, "red")
+    """Fancy display of the current state of a Monte Carlo sampler."""
 
     if proposal_sample is not None:
         space.scatter(proposal_sample, "green")
@@ -26,6 +24,7 @@ def display(space, potential, sample, proposal_sample=None, proposal_potential=N
 
 
 def display_samples(sampler, iterations = 100, runs = 5):
+    """Displays results and statistics for a run of a Monte Carlo sampler."""
 
     verbosity = sampler.verbose
     sampler.verbose = True
@@ -163,6 +162,7 @@ def display_samples(sampler, iterations = 100, runs = 5):
 
 
 class MonteCarloSampler(object):
+    """Abstract Monte Carlo sampler, as a Python iterator."""
 
     def __init__(self, space, start, proposal, verbose = False):
         self.space = space
@@ -194,7 +194,7 @@ class MonteCarloSampler(object):
 
 
 class ParallelMetropolisHastings(MonteCarloSampler):
-    """Parallel Metropolis-Hastings."""
+    """Parallel Metropolis-Hastings algorithm."""
 
     def __init__(self, space, start, proposal, annealing = None, verbose = False):
         super().__init__(space, start, proposal, verbose = verbose)
@@ -235,7 +235,7 @@ class ParallelMetropolisHastings(MonteCarloSampler):
 
 
 class NPAIS(MonteCarloSampler):
-    """Non-parametric adaptive importance sampling."""
+    """Non-parametric adaptive importance sampling, by batch for the sake of efficiency on the GPU."""
 
     def __init__(self, space, start, proposal, annealing = None, q0 = None, N = 1, verbose = False):
         super().__init__(space, start, proposal, verbose = verbose)

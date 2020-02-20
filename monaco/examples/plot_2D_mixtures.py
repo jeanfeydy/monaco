@@ -2,12 +2,17 @@
 Sampling in dimension 2
 ===============================
 
-Blabla
+We discuss the performances of several Monte Carlo samplers on a toy 2D example.
 
 """
 
+
 ######################
-# Blabla
+# Introduction
+# -------------------
+#
+# First of all, some standard imports.
+
 
 import numpy as np
 import torch
@@ -19,7 +24,7 @@ use_cuda = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
 ################################
-# Blabla
+# Our sampling space:
 
 from monaco.euclidean import EuclideanSpace
 
@@ -28,27 +33,7 @@ space = EuclideanSpace(dimension = D, dtype = dtype)
 
 
 #######################################
-#
-
-from monaco.euclidean import GaussianMixture
-
-nruns = 2
-N, M = (2000 if use_cuda else 50), 5
-
-# Let's generate a blend of peaky Gaussians, in the unit square:
-m = torch.rand(M, D).type(dtype)  # mean
-s = torch.rand(M).type(dtype)     # deviation
-w = torch.rand(M).type(dtype)     # weights
-
-m = .25  + .5 * m
-s = .005 + .1 * (s**6)
-w = w / w.sum()  # normalize weights
-
-distribution = GaussianMixture(space, m, s, w)
-
-
-#######################################
-#
+# Our toy target distribution:
 
 
 from monaco.euclidean import UnitPotential
@@ -62,7 +47,9 @@ def sinc_potential(x, stripes = 3):
 distribution = UnitPotential(space, sinc_potential)
 
 
-# Display the initial configuration:
+#############################
+# Display the target density, with a typical sample.
+
 plt.figure(figsize = (8, 8))
 space.scatter( distribution.sample(N), "red" )
 space.plot( distribution.potential, "red")
@@ -71,17 +58,28 @@ space.draw_frame()
 
 
 ########################################
+# Sampling
+# --------------------
 #
+# We start from a very poor initialization,
+# thus simulating the challenge of sampling an unknown distribution.
 
 start = .9 + .1 * torch.rand(N, D).type(dtype)
 
+
+#######################################
+# Our proposal will stay the same throughout the experiments:
+# a combination of uniform samples on balls with radii that
+# range from 1/1000 to  0.3.
+
 from monaco.euclidean import BallProposal
 
-proposal = BallProposal(space, scale = .1)
+proposal = BallProposal(space, scale = [.001, .003, .01, .03, .1, .3])
+
 
 ##########################################
-#
-
+# First of all, we illustrate a run of the standard
+# Metropolis-Hastings algorithm, parallelized on the GPU:
 
 
 info = {}
@@ -93,7 +91,8 @@ info["PMH"] = display_samples(pmh_sampler, iterations = 20, runs = nruns)
 
 
 ########################################
-#
+# Then, the standard Collective Monte Carlo method:
+
 
 from monaco.samplers import CMC
 
@@ -102,7 +101,7 @@ info["CMC"] = display_samples(cmc_sampler, iterations = 20, runs = nruns)
 
 
 #############################
-#
+# CMC with Richardson-Lucy deconvolution:
 
 from monaco.samplers import KIDS_CMC
 
@@ -110,8 +109,12 @@ kids_sampler = KIDS_CMC(space, start, proposal, annealing = None, iterations = 5
 info["KIDS"] = display_samples(kids_sampler, iterations = 20, runs = nruns)
 
 
+
 #############################
-#
+# Finally, the Non Parametric Adaptive Importance Sampler,
+# an efficient non-Markovian method with an extensive
+# memory usage:
+
 
 from monaco.samplers import NPAIS
 
@@ -135,6 +138,8 @@ npais_sampler = NPAIS(space, start, proposal, annealing = None, q0 = q0, N = N).
 info["NPAIS"] = display_samples(npais_sampler, iterations = 20, runs = nruns)
 
 
+###############################################
+# Comparative benchmark:
 
 
 import itertools

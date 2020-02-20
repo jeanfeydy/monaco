@@ -25,7 +25,8 @@ def normalize(points):
 
 
 def quat_mult(q_1, q_2):
-    
+    """Multiplication in the space of quaternions."""
+
     a_1, b_1, c_1, d_1 = q_1[:,0], q_1[:,1], q_1[:,2], q_1[:,3]
     a_2, b_2, c_2, d_2 = q_2[:,0], q_2[:,1], q_2[:,2], q_2[:,3]
 
@@ -40,6 +41,8 @@ def quat_mult(q_1, q_2):
 
 
 def quat_to_matrices(points):
+    """Turns quaternions into rotation matrices."""
+    
     points = normalize(points)
     w, x, y, z = points[:,0], points[:,1], points[:,2], points[:,3]
     Q = torch.stack(
@@ -51,6 +54,8 @@ def quat_to_matrices(points):
 
 
 def quat_to_angles_directions(points):
+    """Computes the rotation angles and axes associated to a list of quaternions."""
+
     points = normalize(points)
     norms = (points[:,1:]**2).sum(1).sqrt()
     angles = 2 * torch.atan2(norms, points[:,0])
@@ -63,6 +68,7 @@ def quat_to_angles_directions(points):
 
 
 def angles_directions_to_quat(angles, directions):
+    """Represents a list of rotation angles and axes as quaternions."""
     t = angles / 2
     return torch.cat( ( t.cos().view(-1,1), 
                         t.sin().view(-1,1) * directions ),
@@ -71,6 +77,7 @@ def angles_directions_to_quat(angles, directions):
 
 
 class Rotations(object):
+    """Group of 3D rotations, encoded as unitary quaternions."""
 
     def __init__(self, dtype = None):
         
@@ -80,6 +87,8 @@ class Rotations(object):
 
     
     def apply_noise(self, x, v):
+        """Translates noise v from the identity to a quaternion x."""
+
         return quat_mult(x, v)
 
 
@@ -98,6 +107,7 @@ class Rotations(object):
 
 
     def scatter(self, points, color, ax = None):
+        """Represents a sample of unitary quaternions in the Euler sphere."""
 
         if ax is None: ax = plt.gca()
         if type(ax) is not Axes3D:
@@ -112,10 +122,13 @@ class Rotations(object):
 
 
     def plot(self, potential, color, ax = None):
+        """We do not display potentials in the Euler sphere."""
         None
 
     
     def draw_frame(self, ax = None):
+        """Sketches out the Euler sphere as a ball of radius pi."""
+
         if ax is None: ax = plt.gca()
 
         # Sphere of radius pi:
@@ -158,6 +171,8 @@ class Rotations(object):
 
     
     def uniform_sample(self, N):
+        """Uniform sample in the rotation group, according to its Haar measure."""
+
         uniform_sampler = BallProposal(self, [float(np.pi)])
         scales = np.pi * torch.ones(N,1).type(self.dtype)
         return uniform_sampler.sample_noise(N, scales)
@@ -169,6 +184,8 @@ class Rotations(object):
 
 
 class RejectionSampling(object):
+    """Samples an arbitrary potential through rejection sampling."""
+
     def __init__(self, space, potential):
         self.uniform_sampler = BallProposal(space, [np.pi])
 
@@ -210,11 +227,14 @@ class RejectionSampling(object):
 
 
 class BallProposal(Proposal):
+    """Uniform proposal on a ball of the rotation group."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
     def sample_angles(self, N, scales):
+        """Sample angles by rejection sampling."""
 
         angles  = scales * torch.rand(N, 1).type(self.dtype)
         uniform = torch.rand(N, 1).type(self.dtype)
@@ -231,6 +251,7 @@ class BallProposal(Proposal):
 
 
     def sample_noise(self, N, scales):
+        """Sample N rotations at random in balls centered around the identity, with radii given by the scales array."""
         angles = self.sample_angles(N, scales)
         
         directions = torch.randn(N, 3).type(self.dtype)
@@ -240,6 +261,8 @@ class BallProposal(Proposal):
 
 
     def nlog_density(self, target, source, log_weights, scales, probas):
+        """Negative log-likelihood of the proposal."""
+        
         target, source = normalize(target), normalize(source)
 
         x_i = LazyTensor( target[:,None,:] )  # (N,1,D)

@@ -2,12 +2,15 @@
 Sampling on the 3D rotation group
 ===================================
 
-Blabla
+Let's show how to sample some distributions on the compact manifold SO(3).
 
 """
 
 ######################
-# Blabla
+# Introduction
+# -----------------
+#
+# First, some standard imports.
 
 import numpy as np
 import torch
@@ -23,7 +26,9 @@ use_cuda = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
 ################################
-# Blabla
+# All functions that are relevant to the rotation group
+# are stored in the `monaco.rotations` submodule.
+# We first create our manifold, on the GPU whenever possible.
 
 from monaco.rotations import Rotations
 
@@ -31,7 +36,11 @@ space = Rotations(dtype = dtype)
 
 
 #######################################
-#
+# Rotations are encoded as quaternions and displayed as
+# Euler vectors in a sphere of radius pi.
+# Antipodal points at the boundary are identified with each other.
+# Here, we create two arbitrary rotations and sample points
+# at random in their neighborhood.
 
 N = 10000 if use_cuda else 50
 
@@ -53,60 +62,16 @@ space.draw_frame()
 plt.tight_layout()
 
 
-#######################################
-#
-
-from monaco.rotations import RejectionSampling, quat_to_matrices
-
-J = 10 * torch.randn(3, 3).type(dtype)
-
-J = torch.FloatTensor([[1, 5, 5, 1]]).type(dtype)
-J = 50 * quat_to_matrices(J)
-
-def von_mises_potential(x):
-    A = quat_to_matrices(x)
-    V_i = - .5 * (J.view(-1, 9) * A.view(-1, 9)).sum(1)
-
-    # u, s, v = torch.svd(J)
-    # V_i = V_i + .5 * s.sum()
-
-    return V_i
-
-
-distribution = RejectionSampling(space, von_mises_potential)
-
-if False:
-    x = distribution.sample(N)
-
-    # Display the initial configuration:
-    plt.figure(figsize = (8, 8))
-    space.scatter( x, "red" )
-    space.plot( distribution.potential, "red")
-    space.draw_frame()
-
-
-
-
-##########################################
-#
-
-from monaco.samplers import CMC, display_samples
-
-
-start = space.uniform_sample(N)
-cmc_sampler = CMC(space, start, proposal).fit(distribution)
-# display_samples(cmc_sampler, iterations = 100, runs = 5)
-
-
-
-
-
-
 
 
 
 ####################################
+# Procrustes analysis
+# ---------------------------
 #
+# We consider the Von Mises distribution
+# associated to a Procrustes registration problem:
+
 
 
 from monaco.rotations import quat_to_matrices
@@ -128,6 +93,7 @@ class ProcrustesDistribution(object):
 
 
 #########################################
+# Then, we load two proteins as point clouds in the ambient 3D space:
 #
 
 def load_csv(fname):
@@ -144,6 +110,7 @@ B = load_csv("data/Ca1D3Z_1.csv")
 distribution = ProcrustesDistribution(A, B, temperature = 1e-4)
 
 #########################################
+# Finally, we use the MOKA sampler on this distribution:
 #
 
 
@@ -161,6 +128,12 @@ display_samples(moka_sampler, iterations = 100, runs = 2);
 
 
 ##################################################
+# Wasserstein potential
+# ------------------------------
+# 
+# We rely on the GeomLoss library to define a Procrustes-like
+# potential, where the discrepancy between two point clouds is computed
+# using a good approximation of the squared Wasserstein distance.
 #
 
 N = 10000
@@ -190,7 +163,10 @@ class WassersteinDistribution(object):
 
         return V_i.view(-1) / self.temperature  # (N,)
 
-
+####################################################
+# Just as in the example above, we use
+# the MOKA algorithm to generate samples for this
+# useful distribution:
 
 distribution = WassersteinDistribution(A, B, temperature = 1e-4)
 
@@ -204,6 +180,8 @@ display_samples(moka_sampler, iterations = 100, runs = 1);
 
 
 #############################################
+# As a sanity check, we perform the same computation
+# with simple pairs of points. 
 #
 
 def load_coordinates(coordinates):
@@ -218,6 +196,8 @@ B = load_coordinates([[0., 1., 0.], [0., -1., 0.]])
 
 distribution = WassersteinDistribution(A, B, temperature = 1e-4)
 
+############################################
+# As expected, all the symmetries of the problem are respected by our sampler:
 
 start = space.uniform_sample(N)
 proposal = BallProposal(space, scale = [.1, .2, .5, 1., 2.])
