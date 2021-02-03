@@ -368,6 +368,15 @@ class CMC(MonteCarloSampler):
     def extra_info(self):
         return {}
 
+    def proposal_potential(self, x, ratio):
+        y = self.sample_proposal(x)
+
+        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
+        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+
+        return y, V_x, V_y, Prop_x, Prop_y
+
+
     def update(self):
         x = self.x
         N = len(x)
@@ -379,10 +388,7 @@ class CMC(MonteCarloSampler):
             else 1 - np.exp(-self.iteration / self.annealing)
         )
 
-        y = self.sample_proposal(x)
-
-        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
-        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+        y, V_x, V_y, Prop_x, Prop_y = self.proposal_potential(x, ratio)
 
         # Logarithm of the CMC ratio:
         scores = ratio * (V_x - V_y) + Prop_y - Prop_x
@@ -447,33 +453,24 @@ class MOKA_CMC(CMC):
 from scipy import stats
 
 
-class KIDS_CMC(MonteCarloSampler):
+class KIDS_CMC(CMC):
     """Kernel Importance-by-Deconvolution Sampling Collective Monte-Carlo."""
 
     def __init__(
         self, space, start, proposal, annealing=None, verbose=False, iterations=100
     ):
-        super().__init__(space, start, proposal, verbose=verbose)
-        self.annealing = annealing
+        super().__init__(space, start, proposal, verbose=verbose, annealing=annealing)
         self.nits = iterations
 
-    def update(self):
-        x = self.x
+
+    def proposal_potential(self, x, ratio):
         N = len(x)
-
-        # Annealing ratio
-        ratio = (
-            1
-            if self.annealing is None
-            else 1 - np.exp(-self.iteration / self.annealing)
-        )
-
         V_x = self.distribution.potential(x)
 
         # Richardson-Lucy-like iterations ----------------------------------
         # We look for u such that
         #   proposal.potential(x, u)(x_i) = - log( k * e^u ) (x_i) = q * V(x_i)
-        #
+
         target = -ratio * V_x
         target = target - target.logsumexp(0)  # Normalize the target log-likelihood
 
@@ -494,29 +491,19 @@ class KIDS_CMC(MonteCarloSampler):
         indices = torch.from_numpy(indices).to(x.device)
         y = self.proposal.sample(x[indices, :])  # Proposal
 
+        # Potentials:
+        # -------------------------------------------
         V_y = self.distribution.potential(y)
         Prop_x = self.proposal.potential(x, u)(x)
         Prop_y = self.proposal.potential(x, u)(y)
+        self.u = u  # Save for later plot
 
-        # Logarithm of the CMC ratio:
-        scores = ratio * (V_x - V_y) + Prop_y - Prop_x
+        return y, V_x, V_y, Prop_x, Prop_y
 
-        accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
 
-        x[accept, :] = y[accept, :]  # MCMC update
-        rate = (1.0 * accept).mean()
+    def extra_info(self):
+        return {"log-weights" : self.u}
 
-        self.x = x
-
-        info = {
-            "sample": x,
-            "proposal": y,
-            "rate": rate,
-            "log-weights": u,
-            "normalizing constant": (Prop_y - V_y).exp().mean(),
-        }
-
-        return info
 
 
 class MOKA_KIDS_CMC(MonteCarloSampler):
