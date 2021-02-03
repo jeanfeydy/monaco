@@ -354,11 +354,23 @@ class CMC(MonteCarloSampler):
         super().__init__(space, start, proposal, verbose=verbose)
         self.annealing = annealing
 
-    def update(self):
-        x = self.x
+
+    def sample_proposal(self, x):
+
         N = len(x)
         indices = torch.randint(N, size=(N,)).to(x.device)
         y = self.proposal.sample(x[indices, :])  # Proposal
+        return y
+
+    def update_kernel(self, scores):
+        None
+
+    def extra_info(self):
+        return {}
+
+    def update(self):
+        x = self.x
+        N = len(x)
 
         # Annealing ratio
         ratio = (
@@ -366,6 +378,8 @@ class CMC(MonteCarloSampler):
             if self.annealing is None
             else 1 - np.exp(-self.iteration / self.annealing)
         )
+
+        y = self.sample_proposal(x)
 
         V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
         V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
@@ -377,9 +391,11 @@ class CMC(MonteCarloSampler):
 
         x[accept, :] = y[accept, :]  # MCMC update
 
+        # update the kernel probabilities:
+        self.update_kernel(scores)
+
         # x = x.clamp(0, 1)       # Clip to the unit square
         rate = (1.0 * accept).mean()
-
         self.x = x
 
         info = {
@@ -388,46 +404,29 @@ class CMC(MonteCarloSampler):
             "rate": rate,
             "normalizing constant": (Prop_y - V_y).exp().mean(),
         }
+        info = {**info, **self.extra_info()}
 
         return info
 
 
-class MOKA_CMC(MonteCarloSampler):
+class MOKA_CMC(CMC):
     """Collective Monte-Carlo, with adaptive kernels."""
 
-    def __init__(self, space, start, proposal, annealing=None, verbose=False):
-        super().__init__(space, start, proposal, verbose=verbose)
-        self.annealing = annealing
-
-    def update(self):
-        x = self.x
+    def sample_proposal(self, x):
         N = len(x)
         indices = torch.randint(N, size=(N,)).to(x.device)
-        y, scale_indices = self.proposal.sample_indices(x[indices, :])  # Proposal
+        y, scale_indices = self.proposal.sample_indices(x[indices, :])
+        self.scale_indices = scale_indices 
+        return y
 
-        # Annealing ratio
-        ratio = (
-            1
-            if self.annealing is None
-            else 1 - np.exp(-self.iteration / self.annealing)
-        )
 
-        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
-        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
-
-        # Logarithm of the CMC ratio:
-        scores = ratio * (V_x - V_y) + Prop_y - Prop_x
-
-        accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
-
-        x[accept, :] = y[accept, :]  # MCMC update
-
+    def update_kernel(self, scores):
         # Update the kernel probabilities:
         probas = self.proposal.probas.clone()
         avg_score = self.proposal.probas.clone()
         for i in range(len(probas)):
             # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
-            scores_i = scores[scale_indices == i]
+            scores_i = scores[self.scale_indices == i]
             if len(scores_i) == 0:
                 avg_score[i] = 0.0
             else:
@@ -440,20 +439,9 @@ class MOKA_CMC(MonteCarloSampler):
         probas = probas / probas.sum()
         self.proposal.probas = probas
 
-        # x = x.clamp(0, 1)       # Clip to the unit square
-        rate = (1.0 * accept).mean()
+    def extra_info(self):
+        return {"probas" : self.proposal.probas}
 
-        self.x = x
-
-        info = {
-            "sample": x,
-            "proposal": y,
-            "rate": rate,
-            "probas": probas,
-            "normalizing constant": (Prop_y - V_y).exp().mean(),
-        }
-
-        return info
 
 
 from scipy import stats
@@ -507,9 +495,8 @@ class KIDS_CMC(MonteCarloSampler):
         y = self.proposal.sample(x[indices, :])  # Proposal
 
         V_y = self.distribution.potential(y)
-        Prop_x, Prop_y = self.proposal.potential(x, u)(x), self.proposal.potential(
-            x, u
-        )(y)
+        Prop_x = self.proposal.potential(x, u)(x)
+        Prop_y = self.proposal.potential(x, u)(y)
 
         # Logarithm of the CMC ratio:
         scores = ratio * (V_x - V_y) + Prop_y - Prop_x
