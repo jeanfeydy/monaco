@@ -106,6 +106,28 @@ cmc_sampler = CMC(space, start, proposal, annealing=None).fit(distribution)
 info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
 
 
+########################################
+# BGK - Collective Monte Carlo method:
+
+from monaco.samplers import Ada_CMC
+from monaco.euclidean import GaussianProposal
+
+gaussian_proposal = GaussianProposal(space, scale=[0.1])
+bgk_sampler = Ada_CMC(space, start, gaussian_proposal, annealing=5).fit(distribution)
+info["BGK_CMC"] = display_samples(bgk_sampler, iterations=20, runs=1)
+
+
+########################################
+# GMM - Collective Monte Carlo method:
+
+from monaco.euclidean import GMMProposal
+
+gmm_proposal = GMMProposal(space, n_classes = 100)
+gmm_sampler = Ada_CMC(space, start, gmm_proposal, annealing=5).fit(distribution)
+info["GMM_CMC"] = display_samples(gmm_sampler, iterations=20, runs=1)
+
+
+
 #############################
 # CMC with Richardson-Lucy deconvolution:
 

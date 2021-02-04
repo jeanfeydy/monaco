@@ -411,7 +411,7 @@ class CMC(MonteCarloSampler):
         return info
 
 
-class BGK_CMC(CMC):
+class Ada_CMC(CMC):
     """Collective Monte-Carlo, with adaptive anisotropic kernels."""
 
     def proposal_potential(self, x, ratio):
