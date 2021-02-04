@@ -125,6 +125,18 @@ cmc_sampler = CMC(space, start, proposal, annealing=5).fit(distribution)
 info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
 
 
+########################################
+# BGK - Collective Monte Carlo method:
+
+from monaco.samplers import BGK_CMC
+from monaco.euclidean import GaussianProposal
+
+gaussian_proposal = GaussianProposal(space, scale=[0.1])
+
+bgk_sampler = BGK_CMC(space, start, gaussian_proposal, annealing=5).fit(distribution)
+info["BGK_CMC"] = display_samples(bgk_sampler, iterations=20, runs=1)
+
+
 #############################
 # Our first algorithm - CMC with adaptive selection of the kernel bandwidth:
 

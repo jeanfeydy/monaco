@@ -411,8 +411,23 @@ class CMC(MonteCarloSampler):
         return info
 
 
+class BGK_CMC(CMC):
+    """Collective Monte-Carlo, with adaptive anisotropic kernels."""
+
+    def proposal_potential(self, x, ratio):
+        N = len(x)
+        indices = torch.randint(N, size=(N,)).to(x.device) 
+        self.proposal.adapt(x)
+        y = self.proposal.adaptive_sample(x, indices)  # Proposal
+
+        V_x, Prop_x = self.distribution.potential(x), self.proposal.potential(x)(x)
+        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+
+        return y, V_x, V_y, Prop_x, Prop_y
+
+
 class MOKA_CMC(CMC):
-    """Collective Monte-Carlo, with adaptive kernels."""
+    """Collective Monte-Carlo, with adaptive kernel weights."""
 
     def sample_proposal(self, x):
         N = len(x)
