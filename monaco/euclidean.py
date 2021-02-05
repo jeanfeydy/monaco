@@ -463,10 +463,10 @@ class GMMProposal(Proposal):
 
         if self.covariance_type == "full":
             for k in range(self.K):
-                self.covariances[k, :, :] += torch.diag(.0001 + 0 * torch.rand(self.D).type(self.dtype)) ** 2
+                self.covariances[k, :, :] += torch.diag(.01 + 0 * torch.rand(self.D).type(self.dtype)) ** 2
         else:
             for k in range(self.K):
-                self.covariances[k, :, :] += (.0001 + 0 * torch.rand(self.D, 1).type(self.dtype)) ** 2
+                self.covariances[k, :, :] += (.01 + 0 * torch.rand(self.D, 1).type(self.dtype)) ** 2
 
 
         U, S, V = svd(self.covariances)
