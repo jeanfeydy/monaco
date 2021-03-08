@@ -62,8 +62,18 @@ class Proposal:
 
         return V
 
+    def nlog_densities(self, source, log_weights=None):
+        s = torch.FloatTensor(self.s).type_as(source)
+        scales = LazyTensor(s)  # (1,1,K)
+
+        V_source = self.nlog_density(
+            source, source, log_weights, scales
+        )
+
+        return V_source
+
     def sample_noise(self, N, scales):
         raise NotImplementedError()
 
-    def nlog_density(self, target, source, log_weights, scales, probas):
+    def nlog_density(self, target, source, log_weights, scales, probas=None):
         raise NotImplementedError()

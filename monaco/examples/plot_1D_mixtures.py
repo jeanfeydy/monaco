@@ -159,6 +159,16 @@ info["MOKA"] = display_samples(moka_sampler, iterations=20, runs=nruns)
 
 
 #############################
+# With a Markovian selection of the kernel bandwidth:
+
+from monaco.samplers import MOKA_Markov_CMC
+
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=5).fit(distribution)
+info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=20, runs=nruns)
+
+
+#############################
 # Our second algorithm - CMC with Richardson-Lucy deconvolution:
 
 from monaco.samplers import KIDS_CMC
@@ -222,12 +232,10 @@ info["NPAIS"] = display_samples(npais_sampler, iterations=20, runs=nruns)
 ###############################################
 # Comparative benchmark:
 
-
 import itertools
 import seaborn as sns
 
 iters = info["PMH"]["iteration"]
-
 
 def display_line(key, marker):
     sns.lineplot(
@@ -243,7 +251,7 @@ def display_line(key, marker):
 plt.figure(figsize=(4, 4))
 markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
 
-for key, marker in zip(["PMH", "CMC", "KIDS", "MOKA+KIDS", "NPAIS"], markers):
+for key, marker in zip(["PMH", "CMC", "KIDS", "MOKA", "MOKA Markov", "MOKA+KIDS", "NPAIS"], markers):
     display_line(key, marker)
 
 

@@ -41,7 +41,6 @@ from monaco.euclidean import UnitPotential
 N, M = (10000 if use_cuda else 50), 5
 nruns = 5
 
-
 def sinc_potential(x, stripes=3):
     sqnorm = (x ** 2).sum(-1)
     V_i = np.pi * stripes * sqnorm
@@ -93,7 +92,7 @@ from monaco.samplers import ParallelMetropolisHastings, display_samples
 pmh_sampler = ParallelMetropolisHastings(space, start, proposal, annealing=None).fit(
     distribution
 )
-info["PMH"] = display_samples(pmh_sampler, iterations=20, runs=nruns)
+# info["PMH"] = display_samples(pmh_sampler, iterations=20, runs=nruns)
 
 
 ########################################
@@ -103,7 +102,7 @@ info["PMH"] = display_samples(pmh_sampler, iterations=20, runs=nruns)
 from monaco.samplers import CMC
 
 cmc_sampler = CMC(space, start, proposal, annealing=None).fit(distribution)
-info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
+# info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
 
 
 ########################################
@@ -114,7 +113,7 @@ from monaco.euclidean import GaussianProposal
 
 gaussian_proposal = GaussianProposal(space, scale=[0.1])
 bgk_sampler = Ada_CMC(space, start, gaussian_proposal, annealing=5).fit(distribution)
-info["BGK_CMC"] = display_samples(bgk_sampler, iterations=20, runs=1)
+# info["BGK_CMC"] = display_samples(bgk_sampler, iterations=20, runs=1)
 
 
 ########################################
@@ -124,8 +123,16 @@ from monaco.euclidean import GMMProposal
 
 gmm_proposal = GMMProposal(space, n_classes = 100)
 gmm_sampler = Ada_CMC(space, start, gmm_proposal, annealing=5).fit(distribution)
-info["GMM_CMC"] = display_samples(gmm_sampler, iterations=20, runs=1)
+# info["GMM_CMC"] = display_samples(gmm_sampler, iterations=20, runs=1)
 
+
+#############################
+# With a Markovian selection of the kernel bandwidth:
+
+from monaco.samplers import MOKA_Markov_CMC
+
+moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=5).fit(distribution)
+info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=20, runs=nruns)
 
 
 #############################
@@ -136,7 +143,7 @@ from monaco.samplers import KIDS_CMC
 kids_sampler = KIDS_CMC(space, start, proposal, annealing=None, iterations=50).fit(
     distribution
 )
-info["KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
+# info["KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 
 
 #############################
@@ -168,43 +175,43 @@ q0 = Q_0()
 npais_sampler = NPAIS(space, start, proposal, annealing=None, q0=q0, N=N).fit(
     distribution
 )
-info["NPAIS"] = display_samples(npais_sampler, iterations=20, runs=nruns)
+# info["NPAIS"] = display_samples(npais_sampler, iterations=20, runs=nruns)
 
 
 ###############################################
 # Comparative benchmark:
 
+if False:
+    import itertools
+    import seaborn as sns
 
-import itertools
-import seaborn as sns
-
-iters = info["PMH"]["iteration"]
-
-
-def display_line(key, marker):
-    sns.lineplot(
-        x=info[key]["iteration"],
-        y=info[key]["error"],
-        label=key,
-        marker=marker,
-        markersize=6,
-        ci="sd",
-    )
+    iters = info["PMH"]["iteration"]
 
 
-plt.figure(figsize=(4, 4))
-markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
-
-for key, marker in zip(["PMH", "CMC", "KIDS", "NPAIS"], markers):
-    display_line(key, marker)
-
-
-plt.xlabel("Iterations")
-plt.ylabel("ED ( sample, true distribution )")
-plt.ylim(bottom=0.001)
-plt.yscale("log")
-
-plt.tight_layout()
+    def display_line(key, marker):
+        sns.lineplot(
+            x=info[key]["iteration"],
+            y=info[key]["error"],
+            label=key,
+            marker=marker,
+            markersize=6,
+            ci="sd",
+        )
 
 
-plt.show()
+    plt.figure(figsize=(4, 4))
+    markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
+
+    for key, marker in zip(["PMH", "CMC", "KIDS", "NPAIS"], markers):
+        display_line(key, marker)
+
+
+    plt.xlabel("Iterations")
+    plt.ylabel("ED ( sample, true distribution )")
+    plt.ylim(bottom=0.001)
+    plt.yscale("log")
+
+    plt.tight_layout()
+
+
+    plt.show()

@@ -39,12 +39,14 @@ def display_samples(sampler, iterations=100, runs=5):
 
     iters, rates, errors, fluctuations, probas, constants = [], [], [], [], [], []
 
+    # We run the sampler several times to aggregate statistics
+    # and display fancy viualizations for the last run:
     for run in range(runs):
-        x_prev = start.clone()
-        sampler.x[:] = start.clone()
+        x_prev = start.clone()  # We copy the initialization to make independent runs!
+        sampler.x[:] = start.clone()  # in-place update of the sampler state
         sampler.iteration = 0
 
-        if run == runs - 1:
+        if run == runs - 1:  # Fancy display for the last run
             plt.figure(figsize=FIGSIZE)
 
             display(sampler.space, sampler.distribution.potential, x_prev)
@@ -52,36 +54,42 @@ def display_samples(sampler, iterations=100, runs=5):
             plt.title(f"it = 0")
             plt.tight_layout()
 
+        # Iterations that will be displayed.
         to_plot = [1, 2, 5, 10, 20, 50, 100]
 
+        # N.B.: our samplers are implemented as Python iterators.
         for it, info in enumerate(sampler):
 
-            x = info["sample"]
-            y = info.get("proposal", None)
-            u = info.get("log-weights", None)
+            # Unwrap the full sampling "information":
+            x = info["sample"]  # The actual points
+            y = info.get("proposal", None)  # samples that have been accepted or rejected
+            u = info.get("log-weights", None)  # Deconvolution log-weights
 
             iters.append(it)
 
-            try:
+            # Save the relevant monitoring information:
+            try:  # Acceptance rate
                 rates.append(info["rate"].item())
             except KeyError:
                 None
 
-            try:
+            try:  # Kernel probabilities for MOKA
                 probas.append(info["probas"])
             except KeyError:
                 None
 
-            try:
+            try:  # Estimation of the "total mass" of the distribution
                 constants.append(info["normalizing constant"].item())
             except KeyError:
                 None
 
-            try:
+            try:  
                 N = len(x)
+                # "Energy distance" between a MCMC sample and a genuine one
                 errors.append(
                     sampler.space.discrepancy(x, sampler.distribution.sample(N)).item()
                 )
+                # "Energy distance" between two genuine samples
                 fluctuations.append(
                     sampler.space.discrepancy(
                         sampler.distribution.sample(N), sampler.distribution.sample(N)
@@ -90,6 +98,7 @@ def display_samples(sampler, iterations=100, runs=5):
             except AttributeError:
                 None
 
+            # On the last run, display some fancy visualizations:
             if run == runs - 1 and it + 1 in to_plot:
                 plt.figure(figsize=FIGSIZE)
 
@@ -115,6 +124,7 @@ def display_samples(sampler, iterations=100, runs=5):
 
     iters = np.array(iters)
 
+    # Overview for the acceptance rates:
     if rates != []:
         rates = np.array(rates)
 
@@ -131,6 +141,7 @@ def display_samples(sampler, iterations=100, runs=5):
         plt.xlabel("Iterations")
         plt.tight_layout()
 
+    # Overview for the Energy Distances between MCMC and genuine samples:
     if errors != []:
         errors = np.array(errors)
 
@@ -139,6 +150,7 @@ def display_samples(sampler, iterations=100, runs=5):
             x=iters, y=errors, marker="o", markersize=6, label="Error", ci="sd"
         )
 
+    # Overview for the Energy Distances between two genuine samples:
     if fluctuations != []:
         fluctuations = np.array(fluctuations)
 
@@ -154,6 +166,7 @@ def display_samples(sampler, iterations=100, runs=5):
         plt.ylim(bottom=0.0)
         plt.tight_layout()
 
+    # Overview for the MOKA kernel weights:
     if probas != []:
         probas = numpy(torch.stack(probas)).T
 
@@ -172,6 +185,7 @@ def display_samples(sampler, iterations=100, runs=5):
         plt.ylim(bottom=0.0)
         plt.tight_layout()
 
+    # Overview for the normalizing constants:
     if constants != []:
         plt.figure(figsize=FIGSIZE)
         constants = np.array(constants)
@@ -202,6 +216,8 @@ def display_samples(sampler, iterations=100, runs=5):
     return to_return
 
 
+# Sampling classes =====================================================
+
 class MonteCarloSampler(object):
     """Abstract Monte Carlo sampler, as a Python iterator."""
 
@@ -216,6 +232,7 @@ class MonteCarloSampler(object):
         self.distribution = distribution
         return self
 
+    # N.B.: Our samplers are defined as Python iterators.
     def __iter__(self):
         return self
 
@@ -231,6 +248,8 @@ class MonteCarloSampler(object):
     def update(self):
         raise NotImplementedError()
 
+
+# Baselines ===========================================
 
 class ParallelMetropolisHastings(MonteCarloSampler):
     """Parallel Metropolis-Hastings algorithm."""
@@ -347,6 +366,8 @@ class NPAIS(MonteCarloSampler):
         return info
 
 
+# Our first CMC method ============================================
+
 class CMC(MonteCarloSampler):
     """Collective Monte-Carlo."""
 
@@ -424,6 +445,68 @@ class Ada_CMC(CMC):
         V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
 
         return y, V_x, V_y, Prop_x, Prop_y
+
+
+class MOKA_Markov_CMC(CMC):
+    """Collective Monte-Carlo, with kernel weights that are adapted at every step."""
+
+    def proposal_potential(self, x, ratio):
+        N = len(x)
+
+        # Update the kernel probabilities ----------------------
+        # Evaluate the potential on the sample, and normalize it
+        V_x = self.distribution.potential(x)
+        logpi_x = -V_x
+        logpi_x -= logpi_x.logsumexp(-1)  # (N,)
+
+        # Evaluate the proposal kernels on the sample, and normalize them
+        logprop_x = -self.proposal.nlog_densities(x)
+        logprop_x -= logprop_x.logsumexp(0, keepdim=True)  # (N, K)
+
+        # Get the current vector of kernel weights
+        probas = torch.ones_like(self.proposal.probas) #.clone()
+        probas = probas / probas.sum()
+
+        log_probas = probas.log().detach()
+        log_probas.requires_grad = True
+        #optimizer = torch.optim.LBFGS([log_probas], line_search_fn = "strong_wolfe")
+        optimizer = torch.optim.Adam([log_probas], lr=1)
+
+        # Define the auxiliary function to optimize
+        logphi = lambda r : (r.exp() * (r - 1) + 1)
+
+        def closure():
+            optimizer.zero_grad()
+            log_probas_normalized = log_probas - log_probas.logsumexp(-1)
+            logprobas_x = (logprop_x + log_probas_normalized.view(1, -1)).logsumexp(-1)
+            loss = logphi(logprobas_x - logpi_x).sum()
+            # print(f"{loss.item():.1e}", end=", ")
+            loss.backward()
+            return loss
+
+        # Optimization loop
+        for it in range(100):
+            optimizer.step(closure)
+
+        # Update the probas:
+        log_probas_normalized = log_probas - log_probas.logsumexp(-1)
+        probas = log_probas_normalized.exp()
+        # print()
+        print(probas.cpu())
+        #self.proposal.probas = probas.detach()
+
+        # Proposal and potential -------------------------------
+        y = self.sample_proposal(x)  # Proposal
+
+        Prop_x = self.proposal.potential(x)(x)
+        V_y, Prop_y = self.distribution.potential(y), self.proposal.potential(x)(y)
+
+        return y, V_x, V_y, Prop_x, Prop_y
+
+
+    def extra_info(self):
+        return {"probas" : self.proposal.probas}
+
 
 
 class MOKA_CMC(CMC):
