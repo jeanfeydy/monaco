@@ -85,6 +85,7 @@ proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
 # Metropolis-Hastings algorithm, parallelized on the GPU:
 
 
+
 info = {}
 
 from monaco.samplers import ParallelMetropolisHastings, display_samples
@@ -130,6 +131,8 @@ gmm_sampler = Ada_CMC(space, start, gmm_proposal, annealing=5).fit(distribution)
 # With a Markovian selection of the kernel bandwidth:
 
 from monaco.samplers import MOKA_Markov_CMC
+
+
 
 moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=5).fit(distribution)
 info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=20, runs=nruns)

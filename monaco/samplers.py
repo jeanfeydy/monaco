@@ -7,7 +7,8 @@ from matplotlib import pyplot as plt
 
 numpy = lambda x: x.cpu().numpy()
 
-FIGSIZE = (8, 8)  # Small thumbnails for the paper
+FIGSIZE = (8, 12)  # Small thumbnails for the paper
+FIGSIZE_INFO = (8, 8)  # Small thumbnails for the paper
 
 
 def display(
@@ -29,7 +30,7 @@ def display(
     space.draw_frame()
 
 
-def display_samples(sampler, iterations=100, runs=5):
+def display_samples(sampler, iterations=100, runs=5, small=True):
     """Displays results and statistics for a run of a Monte Carlo sampler."""
 
     verbosity = sampler.verbose
@@ -49,10 +50,15 @@ def display_samples(sampler, iterations=100, runs=5):
         if run == runs - 1:  # Fancy display for the last run
             plt.figure(figsize=FIGSIZE)
 
+            if small:
+                plt.subplot(3,2,1)
+                fig_index = 2
+
             display(sampler.space, sampler.distribution.potential, x_prev)
 
             plt.title(f"it = 0")
             plt.tight_layout()
+
 
         # Iterations that will be displayed.
         to_plot = [1, 2, 5, 10, 20, 50, 100]
@@ -100,7 +106,12 @@ def display_samples(sampler, iterations=100, runs=5):
 
             # On the last run, display some fancy visualizations:
             if run == runs - 1 and it + 1 in to_plot:
-                plt.figure(figsize=FIGSIZE)
+
+                if small:
+                    plt.subplot(3, 2, fig_index)
+                    fig_index += 1
+                else:
+                    plt.figure(figsize=FIGSIZE)
 
                 try:
                     display(
@@ -124,11 +135,19 @@ def display_samples(sampler, iterations=100, runs=5):
 
     iters = np.array(iters)
 
+    if small:
+        plt.figure(figsize=FIGSIZE_INFO)
+        fig_index = 1
+
     # Overview for the acceptance rates:
     if rates != []:
         rates = np.array(rates)
 
-        plt.figure(figsize=FIGSIZE)
+        if small:
+            plt.subplot(2, 2, fig_index)
+            fig_index += 1
+        else:
+            plt.figure(figsize=FIGSIZE)
         sns.lineplot(
             x=np.array(iters),
             y=np.array(rates),
@@ -145,7 +164,12 @@ def display_samples(sampler, iterations=100, runs=5):
     if errors != []:
         errors = np.array(errors)
 
-        plt.figure(figsize=FIGSIZE)
+        if small:
+            plt.subplot(2, 2, fig_index)
+            fig_index += 1
+        else:
+            plt.figure(figsize=FIGSIZE)
+
         sns.lineplot(
             x=iters, y=errors, marker="o", markersize=6, label="Error", ci="sd"
         )
@@ -170,7 +194,12 @@ def display_samples(sampler, iterations=100, runs=5):
     if probas != []:
         probas = numpy(torch.stack(probas)).T
 
-        plt.figure(figsize=FIGSIZE)
+        if small:
+            plt.subplot(2, 2, fig_index)
+            fig_index += 1
+        else:
+            plt.figure(figsize=FIGSIZE)
+
         markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
         for scale, proba, marker in zip(sampler.proposal.s, probas, markers):
             sns.lineplot(
@@ -187,7 +216,13 @@ def display_samples(sampler, iterations=100, runs=5):
 
     # Overview for the normalizing constants:
     if constants != []:
-        plt.figure(figsize=FIGSIZE)
+
+        if small:
+            plt.subplot(2, 2, fig_index)
+            fig_index += 1
+        else:
+            plt.figure(figsize=FIGSIZE)
+
         constants = np.array(constants)
         sns.lineplot(
             x=iters,
@@ -456,6 +491,7 @@ class MOKA_Markov_CMC(CMC):
         # Update the kernel probabilities ----------------------
         # Evaluate the potential on the sample, and normalize it
         V_x = self.distribution.potential(x)
+
         logpi_x = -V_x
         logpi_x -= logpi_x.logsumexp(-1)  # (N,)
 
@@ -473,14 +509,15 @@ class MOKA_Markov_CMC(CMC):
         optimizer = torch.optim.Adam([log_probas], lr=1)
 
         # Define the auxiliary function to optimize
-        logphi = lambda r : (r.exp() * (r - 1) + 1)
-
         def closure():
             optimizer.zero_grad()
             log_probas_normalized = log_probas - log_probas.logsumexp(-1)
-            logprobas_x = (logprop_x + log_probas_normalized.view(1, -1)).logsumexp(-1)
-            loss = logphi(logprobas_x - logpi_x).sum()
-            # print(f"{loss.item():.1e}", end=", ")
+            log_products = logprop_x + log_probas_normalized.view(1, -1)
+            logprobas_x = log_products.logsumexp(-1)
+            
+            # Total Variation penalty:
+            loss = (logprobas_x.exp() - logpi_x.exp()).abs().sum()
+
             loss.backward()
             return loss
 
@@ -491,9 +528,7 @@ class MOKA_Markov_CMC(CMC):
         # Update the probas:
         log_probas_normalized = log_probas - log_probas.logsumexp(-1)
         probas = log_probas_normalized.exp()
-        # print()
-        print(probas.cpu())
-        #self.proposal.probas = probas.detach()
+        self.proposal.probas = probas.detach()
 
         # Proposal and potential -------------------------------
         y = self.sample_proposal(x)  # Proposal

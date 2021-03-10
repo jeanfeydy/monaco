@@ -152,7 +152,7 @@ proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
 kids_sampler = KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
     distribution
 )
-info["KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
+# info["KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 
 
 #############################
@@ -166,7 +166,7 @@ proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
 kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
     distribution
 )
-info["MOKA+KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
+# info["MOKA+KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 
 
 #############################

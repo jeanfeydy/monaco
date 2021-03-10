@@ -122,7 +122,7 @@ class EuclideanSpace(object):
             ax = plt.gca()
 
         if self.dimension == 1:
-            ax.axis([0, 1, 1e-3, 1e2])
+            ax.axis([0, 1, 1e-3, 3e1])
         else:
             ax.plot([0, 1, 1, 0, 0], [0, 0, 1, 1, 0], "k")  # unit square
             ax.axis("equal")
