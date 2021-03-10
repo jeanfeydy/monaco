@@ -7,7 +7,9 @@ from matplotlib import pyplot as plt
 
 numpy = lambda x: x.cpu().numpy()
 
+FIGSIZE_LARGE = (8, 8)
 FIGSIZE = (8, 12)  # Small thumbnails for the paper
+CELLSIZE = (4, 4)
 FIGSIZE_INFO = (8, 8)  # Small thumbnails for the paper
 
 
@@ -47,21 +49,24 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
         sampler.x[:] = start.clone()  # in-place update of the sampler state
         sampler.iteration = 0
 
+        # Iterations that will be displayed.
+        to_plot = [1, 2, 5, 10, 20, 50, 100]
+
         if run == runs - 1:  # Fancy display for the last run
-            plt.figure(figsize=FIGSIZE)
 
             if small:
-                plt.subplot(3,2,1)
+                nrows = 3 if iterations < 50 else 4
+                plt.figure(figsize=(CELLSIZE[0] * 2, CELLSIZE[1] * nrows))
+                plt.subplot(nrows,2,1)
                 fig_index = 2
+            else: 
+                plt.figure(figsize=FIGSIZE_LARGE)
 
             display(sampler.space, sampler.distribution.potential, x_prev)
 
             plt.title(f"it = 0")
             plt.tight_layout()
 
-
-        # Iterations that will be displayed.
-        to_plot = [1, 2, 5, 10, 20, 50, 100]
 
         # N.B.: our samplers are implemented as Python iterators.
         for it, info in enumerate(sampler):
@@ -108,10 +113,10 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             if run == runs - 1 and it + 1 in to_plot:
 
                 if small:
-                    plt.subplot(3, 2, fig_index)
+                    plt.subplot(nrows, 2, fig_index)
                     fig_index += 1
                 else:
-                    plt.figure(figsize=FIGSIZE)
+                    plt.figure(figsize=FIGSIZE_LARGE)
 
                 try:
                     display(
@@ -147,7 +152,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             plt.subplot(2, 2, fig_index)
             fig_index += 1
         else:
-            plt.figure(figsize=FIGSIZE)
+            plt.figure(figsize=FIGSIZE_LARGE)
         sns.lineplot(
             x=np.array(iters),
             y=np.array(rates),
@@ -168,7 +173,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             plt.subplot(2, 2, fig_index)
             fig_index += 1
         else:
-            plt.figure(figsize=FIGSIZE)
+            plt.figure(figsize=FIGSIZE_LARGE)
 
         sns.lineplot(
             x=iters, y=errors, marker="o", markersize=6, label="Error", ci="sd"
@@ -198,7 +203,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             plt.subplot(2, 2, fig_index)
             fig_index += 1
         else:
-            plt.figure(figsize=FIGSIZE)
+            plt.figure(figsize=FIGSIZE_LARGE)
 
         markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
         for scale, proba, marker in zip(sampler.proposal.s, probas, markers):
@@ -221,7 +226,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             plt.subplot(2, 2, fig_index)
             fig_index += 1
         else:
-            plt.figure(figsize=FIGSIZE)
+            plt.figure(figsize=FIGSIZE_LARGE)
 
         constants = np.array(constants)
         sns.lineplot(

@@ -92,6 +92,16 @@ space.draw_frame()
 start = 0.05 + 0.1 * torch.rand(N, D).type(dtype)
 start[:Nlucky] = 0.9 + 0.01 * torch.rand(Nlucky, D).type(dtype)
 
+#########################################
+# For exploration, we generate a fraction of our samples
+# using a simple uniform distribution.
+
+from monaco.euclidean import UniformProposal
+
+exploration = .05
+exploration_proposal = UniformProposal(space)
+
+
 #######################################
 # Our proposal will stay the same throughout the experiments:
 # a combination of uniform samples on balls with radii that
@@ -99,7 +109,9 @@ start[:Nlucky] = 0.9 + 0.01 * torch.rand(Nlucky, D).type(dtype)
 
 from monaco.euclidean import BallProposal
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 
 ##########################################
 # First of all, we illustrate a run of the standard
@@ -131,7 +143,8 @@ info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
 from monaco.samplers import Ada_CMC
 from monaco.euclidean import GaussianProposal
 
-gaussian_proposal = GaussianProposal(space, scale=[0.1])
+gaussian_proposal = GaussianProposal(space, scale=[0.1],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 
 bgk_sampler = Ada_CMC(space, start, gaussian_proposal, annealing=5).fit(distribution)
 info["BGK_CMC"] = display_samples(bgk_sampler, iterations=20, runs=1)
@@ -142,7 +155,8 @@ info["BGK_CMC"] = display_samples(bgk_sampler, iterations=20, runs=1)
 
 from monaco.euclidean import GMMProposal
 
-gmm_proposal = GMMProposal(space, n_classes = 100)
+gmm_proposal = GMMProposal(space, n_classes = 100,
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 
 gmm_sampler = Ada_CMC(space, start, gmm_proposal, annealing=5).fit(distribution)
 info["GMM_CMC"] = display_samples(gmm_sampler, iterations=20, runs=1)
@@ -153,7 +167,8 @@ info["GMM_CMC"] = display_samples(gmm_sampler, iterations=20, runs=1)
 
 from monaco.samplers import MOKA_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 moka_sampler = MOKA_CMC(space, start, proposal, annealing=5).fit(distribution)
 info["MOKA"] = display_samples(moka_sampler, iterations=20, runs=nruns)
 
@@ -163,7 +178,8 @@ info["MOKA"] = display_samples(moka_sampler, iterations=20, runs=nruns)
 
 from monaco.samplers import MOKA_Markov_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=5).fit(distribution)
 info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=20, runs=nruns)
 
@@ -173,7 +189,8 @@ info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=20, runs=n
 
 from monaco.samplers import KIDS_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 kids_sampler = KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
     distribution
 )
@@ -185,7 +202,8 @@ info["KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 
 from monaco.samplers import MOKA_KIDS_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 
 kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
     distribution
@@ -201,7 +219,8 @@ info["MOKA+KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 
 from monaco.samplers import NPAIS
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
 
 
 class Q_0(object):
@@ -227,6 +246,8 @@ q0 = Q_0()
 
 npais_sampler = NPAIS(space, start, proposal, annealing=5, q0=q0, N=N).fit(distribution)
 info["NPAIS"] = display_samples(npais_sampler, iterations=20, runs=nruns)
+
+
 
 
 ###############################################
@@ -258,7 +279,7 @@ for key, marker in zip(["PMH", "CMC", "KIDS", "MOKA", "MOKA Markov", "MOKA+KIDS"
 
 plt.xlabel("Iterations")
 plt.ylabel("ED ( sample, true distribution )")
-plt.ylim(bottom=0.001)
+plt.ylim(bottom=1e-4)
 plt.yscale("log")
 
 plt.tight_layout()

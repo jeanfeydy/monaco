@@ -94,6 +94,15 @@ space.draw_frame()
 
 start = torch.rand(N, D).type(dtype)
 
+#########################################
+# For exploration, we generate a fraction of our samples
+# using a simple uniform distribution.
+
+from monaco.euclidean import UniformProposal
+
+exploration = .05
+exploration_proposal = UniformProposal(space)
+
 
 #######################################
 # Our proposal will stay the same throughout the experiments:
@@ -103,7 +112,9 @@ start = torch.rand(N, D).type(dtype)
 
 from monaco.euclidean import BallProposal
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 
 
 ##########################################
@@ -127,6 +138,9 @@ info["PMH"] = display_samples(pmh_sampler, iterations=20, runs=nruns)
 
 from monaco.samplers import CMC
 
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 cmc_sampler = CMC(space, start, proposal, annealing=5).fit(distribution)
 info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
 
@@ -137,9 +151,24 @@ info["CMC"] = display_samples(cmc_sampler, iterations=20, runs=nruns)
 
 from monaco.samplers import MOKA_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 moka_sampler = MOKA_CMC(space, start, proposal, annealing=5).fit(distribution)
 info["MOKA"] = display_samples(moka_sampler, iterations=20, runs=nruns)
+
+
+#############################
+# With a Markovian selection of the kernel bandwidth:
+
+from monaco.samplers import MOKA_Markov_CMC
+
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
+moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=5).fit(distribution)
+info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=20, runs=nruns)
+
 
 
 #############################
@@ -148,7 +177,9 @@ info["MOKA"] = display_samples(moka_sampler, iterations=20, runs=nruns)
 
 from monaco.samplers import KIDS_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 kids_sampler = KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
     distribution
 )
@@ -161,7 +192,9 @@ kids_sampler = KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
 
 from monaco.samplers import MOKA_KIDS_CMC
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 
 kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing=5, iterations=30).fit(
     distribution
@@ -177,7 +210,9 @@ kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing=5, iterations=30)
 
 from monaco.samplers import NPAIS
 
-proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3])
+proposal = BallProposal(space, scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
+                        exploration=exploration, exploration_proposal=exploration_proposal)
+
 
 
 class Q_uniform(object):

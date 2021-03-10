@@ -246,6 +246,22 @@ class UnitPotential(object):
             return x
 
 
+
+class UniformProposal(Proposal):
+    """Uniform proposal on the unit hypercube of R^D."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def sample(self, x):
+        return torch.rand(x.shape).type_as(x)
+
+    def nlog_density(self, target, source, log_weights, scales, probas=None):
+        return torch.zeros(len(target)).type_as(target)
+
+
+
+
 class BallProposal(Proposal):
     """Uniform proposal on a ball of R^D."""
 
@@ -349,7 +365,7 @@ class GaussianProposal(Proposal):
         means = self.means[indices]
         cov_half = self.covariances_half[indices]
         # print(means.shape, cov_half.shape, noise.shape)
-        return means + (cov_half @ noise[:,:,None]).squeeze(-1)
+        return self.explore(x, means + (cov_half @ noise[:,:,None]).squeeze(-1))
 
 
     def sample_noise(self, N, scales):
@@ -390,12 +406,12 @@ class GaussianProposal(Proposal):
             logW_j = LazyTensor(log_weights[None, :, None])
             logK_ij = logK_ij + logW_j
 
-        logdensities_i = logK_ij.logsumexp(dim=1).reshape(-1)  # (N,K)
+        logdensities_i = logK_ij.logsumexp(dim=1).view(-1)  # (N,)
 
         if probas is None:
             return -logdensities_i
         else:
-            return -(logdensities_i + probas.log()[None, :]).logsumexp(dim=1).view(-1)
+            return -(logdensities_i.view(-1, len(probas)) + probas.log()[None, :]).logsumexp(dim=1).view(-1)
 
 
 
@@ -491,7 +507,7 @@ class GMMProposal(Proposal):
 
         cov_half = self.covariances_half[classes]
         y = self.means[classes] + (cov_half @ noise[:,:,None]).squeeze(-1)
-        return y
+        return self.explore(x, y)
 
 
     def sample_noise(self, N, scales):

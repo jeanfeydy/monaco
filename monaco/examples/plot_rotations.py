@@ -121,7 +121,7 @@ start = space.uniform_sample(N)
 proposal = BallProposal(space, scale=[0.1, 0.2, 0.5, 1.0, 2.0])
 
 moka_sampler = MOKA_CMC(space, start, proposal, annealing=5).fit(distribution)
-display_samples(moka_sampler, iterations=100, runs=2)
+display_samples(moka_sampler, iterations=100, runs=2, small=False)
 
 
 ##################################################
@@ -172,7 +172,8 @@ start = space.uniform_sample(N)
 proposal = BallProposal(space, scale=[0.1, 0.2, 0.5, 1.0, 2.0])
 
 moka_sampler = MOKA_CMC(space, start, proposal, annealing=5).fit(distribution)
-display_samples(moka_sampler, iterations=100, runs=1)
+display_samples(moka_sampler, iterations=100, runs=1, small=False)
+
 
 
 #############################################
@@ -201,7 +202,7 @@ start = space.uniform_sample(N)
 proposal = BallProposal(space, scale=[0.1, 0.2, 0.5, 1.0, 2.0])
 
 moka_sampler = MOKA_CMC(space, start, proposal, annealing=5).fit(distribution)
-display_samples(moka_sampler, iterations=100, runs=2)
+display_samples(moka_sampler, iterations=100, runs=2, small=False)
 
 
 plt.show()
