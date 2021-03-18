@@ -568,15 +568,19 @@ class MOKA_CMC(CMC):
             # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
             scores_i = scores[self.scale_indices == i]
             if len(scores_i) == 0:
-                avg_score[i] = 0.0
+                avg_score[i] = -1000000.0  # -> probas[i] = 0. -> probas[i] = 1%
             else:
                 avg_score[i] = scores_i.mean()
 
+        # Normalize, go back to "normal" domain
         avg_score = avg_score - avg_score.logsumexp(0)
-
         probas = avg_score.exp()
 
+        # Minimal probability per scale: 1%
+        probas[probas < .01] = .01  # Otherwise, some scales may disappear
+        # Don't forget to re-normalize
         probas = probas / probas.sum()
+
         self.proposal.probas = probas
 
 
