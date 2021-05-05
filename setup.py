@@ -19,13 +19,13 @@ setup(
     description="GPU accelerated collective Monte Carlo methods.",  # Required
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="http://www.anonymous.com/monaco",
+    url="http://www.kernel-operations.io/monaco",
     project_urls={
-        "Bug Reports": "https://github.com/anonymous/monaco/issues",
-        "Source": "https://github.com/anonymous/monaco",
+        "Bug Reports": "https://github.com/jeanfeydy/monaco/issues",
+        "Source": "https://github.com/jeanfeydy/monaco",
     },
-    author="X. Anonymous",
-    author_email="anonymous@anonymous.com",
+    author="Jean Feydy",
+    author_email="jfeydy@ic.ac.uk",
     python_requires=">=3",
     classifiers=[
         "Development Status :: 3 - Alpha",

@@ -1,5 +1,5 @@
 """
-Sampling in dimension 2
+Sampling in 2D
 ===============================
 
 We discuss the performances of several Monte Carlo samplers on a toy 2D example.

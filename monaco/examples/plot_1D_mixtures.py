@@ -1,5 +1,5 @@
 """
-Sampling in dimension 1
+Sampling in 1D
 ===============================
 
 We discuss the performances of several Monte Carlo samplers on a toy 1D example.

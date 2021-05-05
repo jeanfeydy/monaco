@@ -84,7 +84,7 @@ def linkcode_resolve(domain, info):
     except Exception:
         filename = info["module"].replace(".", "/") + ".py"
 
-    return "https://github.com/anonymous/monaco/tree/master/%s" % filename
+    return "https://github.com/jeanfeydy/monaco/tree/master/%s" % filename
 
 
 from sphinx_gallery.sorting import FileNameSortKey
@@ -142,8 +142,8 @@ project = "Monaco"
 # import time
 # copyright = '2020-{}, Anonymous'.format(time.strftime("%Y"))
 
-copyright = "2020-2021, Anonymous."
-author = "Anonymous."
+copyright = "2020-2021, Jean Feydy, Antoine Diez, Grégoire Clarté."
+author = "Jean Feydy, Antoine Diez, Grégoire Clarté."
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -203,7 +203,7 @@ html_theme_options = {
 
 html_context = {
     "display_github": True,  # Integrate Github
-    "github_user": "anonymous",  # Username
+    "github_user": "jeanfeydy",  # Username
     "github_repo": "monaco",  # Repo name
     "github_version": "master",  # Version
     "conf_py_path": "/doc/",  # Path in the checkout to the docs root

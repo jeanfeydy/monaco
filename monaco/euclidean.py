@@ -287,7 +287,7 @@ class BallProposal(Proposal):
         neighbors_ij = neighbors_ij / volumes
 
         if log_weights is None:
-            neighbors_ij = neighbors_ij / len(source)
+            neighbors_ij = neighbors_ij / float(len(source))
         else:
             w_j = LazyTensor(log_weights[None, :, None].exp())
             neighbors_ij = neighbors_ij * w_j
