@@ -426,19 +426,16 @@ class SMC(MonteCarloSampler):
 
     def update(self):
         if self.ESS() < self.ESSmax:
-            print("plouf" + str(self.iteration))
             index = self.weights.multinomial(num_samples=self.N,replacement=True)
             self.x = self.x[index,:]
             self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
-        # else:
-            # print("bof" + str(self.iteration))
-            # print(self.ESS())
         
         Vtemp = self.Vtemp
         x = self.x
 
         # Update weights (note: does not depend on the next sample)
-        self.weights *= Vtemp(x).exp()/self.V(x).exp()
+        self.log_weights = self.weights.log() + Vtemp(x) - self.V(x)
+        self.weights = self.log_weights.exp()
         self.weights = self.weights/self.weights.sum()
 
         # Metropolis-Hastings with target Vtemp
