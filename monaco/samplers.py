@@ -434,9 +434,9 @@ class SMC(MonteCarloSampler):
         x = self.x
 
         # Update weights (note: does not depend on the next sample)
-        self.log_weights = self.weights.log() + Vtemp(x) - self.V(x)
-        self.weights = self.log_weights.exp()
-        self.weights = self.weights/self.weights.sum()
+        log_weights = self.weights.log() + Vtemp(x) - self.V(x)
+        log_weights -= log_weights.logsumexp(0)
+        self.weights = log_weights.exp()
 
         # Metropolis-Hastings with target Vtemp
         y = self.proposal.sample(x)  # Proposal
