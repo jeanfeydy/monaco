@@ -405,6 +405,55 @@ class NPAIS(MonteCarloSampler):
 
         return info
 
+class SMC(MonteCarloSampler):
+    """Sequential Monte Carlo"""
+
+    def __init__(self, space, start, V0, proposal, temp, ESSmax, verbose=False):
+        super().__init__(space, start, proposal, verbose=verbose)
+        self.V = V0
+        self.N = len(self.x)
+        self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
+        self.temp = temp
+        self.ESSmax = ESSmax
+
+    def ESS(self):
+        return 1./(self.weights ** 2).sum()
+
+    def update(self):
+        if self.ESS() < self.ESSmax:
+            index = self.weights.multinomial(num_samples=self.N,replacement=True)
+            self.x = self.x[index,:]
+            self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
+        a = min(self.iteration/self.temp,1.)
+        Vtemp = lambda x: (1-a) * self.V(x) + a * self.distribution.potential(x)
+        x = self.x
+
+        # Update weights (note: does not depend on the next sample)
+        self.weights *= Vtemp(x)/self.V(x)
+        self.weights = self.weights/self.weights.sum()
+
+        # Metropolis-Hastings with target Vtemp
+        y = self.proposal.sample(x)  # Proposal
+
+        # Logarithm of the MH ratio:
+        scores = Vtemp(x) - Vtemp(y)
+
+        accept = torch.rand(self.N,device=x.device) <= scores.exp()  # h(u) = min(1, u)
+
+        x[accept, :] = y[accept, :]  # MCMC update
+
+        self.x = x
+
+        # Update potential 
+        self.V = Vtemp
+
+        info = {
+            "sample": x,
+        }
+
+        return info
+
+
 
 # Our first CMC method ============================================
 
