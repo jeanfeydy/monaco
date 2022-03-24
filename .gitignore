@@ -132,3 +132,5 @@ dmypy.json
 *_build*
 *_auto_examples*
 .vscode/
+
+test.ipynb

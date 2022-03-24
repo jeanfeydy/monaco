@@ -411,6 +411,7 @@ class SMC(MonteCarloSampler):
     def __init__(self, space, start, V0, proposal, temp, ESSmax, verbose=False):
         super().__init__(space, start, proposal, verbose=verbose)
         self.V = V0
+        self.V0 = V0
         self.N = len(self.x)
         self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
         self.temp = temp
@@ -421,7 +422,7 @@ class SMC(MonteCarloSampler):
 
     def Vtemp(self,x):
         a = min(self.iteration/self.temp,1.)
-        return (1-a) * self.V(x) + a * self.distribution.potential(x)
+        return (1-a) * self.V0(x) + a * self.distribution.potential(x)
 
     def update(self):
         if self.ESS() < self.ESSmax:
