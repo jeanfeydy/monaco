@@ -421,7 +421,7 @@ class SMC(MonteCarloSampler):
         return 1./(self.weights ** 2).sum()
 
     def Vtemp(self,x):
-        a = min(self.iteration/self.temp,1.)
+        a = min((1+self.iteration)/self.temp,1.)
         return (1-a) * self.V0(x) + a * self.distribution.potential(x)
 
     def update(self):
