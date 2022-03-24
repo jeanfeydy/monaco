@@ -420,21 +420,20 @@ class SMC(MonteCarloSampler):
     def ESS(self):
         return 1./(self.weights ** 2).sum()
 
-    def Vtemp(self,x):
-        a = min((1+self.iteration)/self.temp,1.)
-        return (1-a) * self.V0(x) + a * self.distribution.potential(x)
-
     def update(self):
         if self.ESS() < self.ESSmax:
             index = self.weights.multinomial(num_samples=self.N,replacement=True)
             self.x = self.x[index,:]
             self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
         
-        Vtemp = self.Vtemp
+        iter = self.iteration
+        a = min((1+iter)/self.temp,1.)
+        Vtemp = lambda x: (1-a) * self.V0(x) + a * self.distribution.potential(x)
+        
         x = self.x
 
         # Update weights (note: does not depend on the next sample)
-        log_weights = self.weights.log() + Vtemp(x) - self.V(x)
+        log_weights = self.weights.log() - Vtemp(x) + self.V(x)
         log_weights -= log_weights.logsumexp(0)
         self.weights = log_weights.exp()
 
@@ -450,8 +449,8 @@ class SMC(MonteCarloSampler):
 
         self.x = x
 
-        # Update potential 
-        self.V = Vtemp
+        # Update potential
+        self.V = lambda x: (1-a) * self.V0(x) + a * self.distribution.potential(x)
 
         info = {
             "sample": x,
