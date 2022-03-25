@@ -40,7 +40,23 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
 
     start = sampler.x.clone()
 
-    iters, rates, errors, fluctuations, probas, constants = [], [], [], [], [], []
+    iters, rates, errors, fluctuations, probas, constants, ESS = [], [], [], [], [], [], []
+
+    # Initial error
+    try:  
+        N = len(start)
+        # "Energy distance" between a MCMC sample and a genuine one
+        errors.append(
+            sampler.space.discrepancy(start, sampler.distribution.sample(N)).item()
+        )
+        # "Energy distance" between two genuine samples
+        fluctuations.append(
+            sampler.space.discrepancy(
+                sampler.distribution.sample(N), sampler.distribution.sample(N)
+            ).item()
+        )
+    except AttributeError:
+        None
 
     # We run the sampler several times to aggregate statistics
     # and display fancy viualizations for the last run:
@@ -50,7 +66,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
         sampler.iteration = 0
 
         # Iterations that will be displayed.
-        to_plot = [1, 2, 5, 10, 20, 50, 100]
+        to_plot = [1, 2, 5, 10, 20, 50, 80, 100]
 
         if run == runs - 1:  # Fancy display for the last run
 
@@ -91,6 +107,11 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
 
             try:  # Estimation of the "total mass" of the distribution
                 constants.append(info["normalizing constant"].item())
+            except KeyError:
+                None
+
+            try:  # Estimation of the ESS
+                ESS.append(info["ESS"].item())
             except KeyError:
                 None
 
@@ -176,7 +197,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             plt.figure(figsize=FIGSIZE_LARGE)
 
         sns.lineplot(
-            x=iters, y=errors, marker="o", markersize=6, label="Error", ci="sd"
+            x=np.insert(iters,0,0), y=errors, marker="o", markersize=6, label="Error", ci="sd"
         )
 
     # Overview for the Energy Distances between two genuine samples:
@@ -184,7 +205,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
         fluctuations = np.array(fluctuations)
 
         sns.lineplot(
-            x=iters,
+            x=np.insert(iters,0,0),
             y=fluctuations,
             marker="X",
             markersize=6,
@@ -237,6 +258,35 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             label="Normalizing constant",
             ci="sd",
         )
+
+        plt.xlabel("Iterations")
+        plt.ylim(bottom=0.0)
+        plt.tight_layout()
+
+    # Overview for the ESS:
+    if ESS != []:
+
+        try:
+            ESSmax = sampler.ESSmax
+        except AttributeError:
+            ESSmax = 0.
+
+        if small:
+            plt.subplot(2, 2, fig_index)
+            fig_index += 1
+        else:
+            plt.figure(figsize=FIGSIZE_LARGE)
+
+        ESS = np.array(ESS)
+        sns.lineplot(
+            x=iters,
+            y=ESS,
+            marker="o",
+            markersize=6,
+            label="ESS",
+            ci="sd",
+        )
+        plt.hlines(ESSmax,0,iterations,'k','dotted')
 
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
@@ -422,7 +472,8 @@ class SMC(MonteCarloSampler):
         return 1./(self.weights ** 2).sum()
 
     def update(self):
-        if self.ESS() < self.ESSmax:
+        ESS = self.ESS()
+        if ESS < self.ESSmax:
             index = self.weights.multinomial(num_samples=self.N,replacement=True)
             self.x = self.x[index,:]
             self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
@@ -456,6 +507,7 @@ class SMC(MonteCarloSampler):
 
         info = {
             "sample": x,
+            "ESS" : ESS
         }
 
         return info
