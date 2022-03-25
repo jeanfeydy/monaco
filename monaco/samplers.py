@@ -68,7 +68,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         if run == runs - 1:  # Fancy display for the last run
 
             if small:
-                nrows = int(len(to_plot)/2) + (len(to_plot)%2>0)
+                nrows = int((len(to_plot)+1)/2) + ((len(to_plot)+1)%2>0)
                 plt.figure(figsize=(CELLSIZE[0] * 2, CELLSIZE[1] * nrows))
                 plt.subplot(nrows,2,1)
                 fig_index = 2
