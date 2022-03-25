@@ -32,7 +32,7 @@ def display(
     space.draw_frame()
 
 
-def display_samples(sampler, iterations=100, runs=5, small=True):
+def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80, 100], runs=5, small=True):
     """Displays results and statistics for a run of a Monte Carlo sampler."""
 
     verbosity = sampler.verbose
@@ -63,15 +63,12 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
     for run in range(runs):
         x_prev = start.clone()  # We copy the initialization to make independent runs!
         sampler.x[:] = start.clone()  # in-place update of the sampler state
-        sampler.iteration = 0
-
-        # Iterations that will be displayed.
-        to_plot = [1, 2, 5, 10, 20, 50, 80, 100]
+        sampler.iteration = 0        
 
         if run == runs - 1:  # Fancy display for the last run
 
             if small:
-                nrows = 3 if iterations < 50 else 4
+                nrows = int(len(to_plot)/2) + (len(to_plot)%2>0)
                 plt.figure(figsize=(CELLSIZE[0] * 2, CELLSIZE[1] * nrows))
                 plt.subplot(nrows,2,1)
                 fig_index = 2
@@ -92,7 +89,7 @@ def display_samples(sampler, iterations=100, runs=5, small=True):
             y = info.get("proposal", None)  # samples that have been accepted or rejected
             u = info.get("log-weights", None)  # Deconvolution log-weights
 
-            iters.append(it)
+            iters.append(it+1)
 
             # Save the relevant monitoring information:
             try:  # Acceptance rate
