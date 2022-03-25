@@ -408,7 +408,7 @@ class NPAIS(MonteCarloSampler):
 class SMC(MonteCarloSampler):
     """Sequential Monte Carlo"""
 
-    def __init__(self, space, start, V0, proposal, temp, ESSmax, verbose=False):
+    def __init__(self, space, start, V0, proposal, temp, ESSmax, mh_step=1, verbose=False):
         super().__init__(space, start, proposal, verbose=verbose)
         self.V = V0
         self.V0 = V0
@@ -416,6 +416,7 @@ class SMC(MonteCarloSampler):
         self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
         self.temp = temp
         self.ESSmax = ESSmax
+        self.mh_step = mh_step
 
     def ESS(self):
         return 1./(self.weights ** 2).sum()
@@ -438,14 +439,15 @@ class SMC(MonteCarloSampler):
         self.weights = log_weights.exp()
 
         # Metropolis-Hastings with target Vtemp
-        y = self.proposal.sample(x)  # Proposal
+        for k in range(self.mh_step):
+            y = self.proposal.sample(x)  # Proposal
 
-        # Logarithm of the MH ratio:
-        scores = Vtemp(x) - Vtemp(y)
+            # Logarithm of the MH ratio:
+            scores = Vtemp(x) - Vtemp(y)
 
-        accept = torch.rand(self.N,device=x.device) <= scores.exp()  # h(u) = min(1, u)
+            accept = torch.rand(self.N,device=x.device) <= scores.exp()  # h(u) = min(1, u)
 
-        x[accept, :] = y[accept, :]  # MCMC update
+            x[accept, :] = y[accept, :]  # MCMC update
 
         self.x = x
 
