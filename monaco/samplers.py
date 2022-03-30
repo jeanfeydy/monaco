@@ -1,3 +1,4 @@
+from unicodedata import numeric
 import numpy as np
 import itertools
 import torch
@@ -5,9 +6,11 @@ import torch
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+from scipy.special import gamma
+
 numpy = lambda x: x.cpu().numpy()
 
-FIGSIZE_LARGE = (8, 8)
+FIGSIZE_LARGE = (4, 4)
 FIGSIZE = (8, 12)  # Small thumbnails for the paper
 CELLSIZE = (4, 4)
 FIGSIZE_INFO = (8, 8)  # Small thumbnails for the paper
@@ -40,7 +43,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
 
     start = sampler.x.clone()
 
-    iters, rates, errors, fluctuations, probas, constants, ESS = [], [], [], [], [], [], []
+    iters, rates, errors, fluctuations, probas, constants, number_of_neighbours, ESS = [], [], [], [], [], [], [], []
 
     # Initial error
     try:  
@@ -107,6 +110,11 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             except KeyError:
                 None
 
+            try:  # Count the number of neighbours
+                number_of_neighbours.append(info["number of neighbours"])
+            except KeyError:
+                None
+
             try:  # Estimation of the ESS
                 ESS.append(info["ESS"].item())
             except KeyError:
@@ -158,16 +166,20 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
 
     iters = np.array(iters)
 
+    small = False
+
     if small:
-        plt.figure(figsize=FIGSIZE_INFO)
+        plt.figure(figsize=FIGSIZE_LARGE)
         fig_index = 1
+
+    nrows_data = 3
 
     # Overview for the acceptance rates:
     if rates != []:
         rates = np.array(rates)
 
         if small:
-            plt.subplot(2, 2, fig_index)
+            plt.subplot(nrows_data, 2, fig_index)
             fig_index += 1
         else:
             plt.figure(figsize=FIGSIZE_LARGE)
@@ -181,14 +193,15 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         )
         plt.ylim(0, 1)
         plt.xlabel("Iterations")
-        plt.tight_layout()
+        plt.gca().set_box_aspect(1)
+        # plt.tight_layout()
 
     # Overview for the Energy Distances between MCMC and genuine samples:
     if errors != []:
         errors = np.array(errors)
 
         if small:
-            plt.subplot(2, 2, fig_index)
+            plt.subplot(nrows_data, 2, fig_index)
             fig_index += 1
         else:
             plt.figure(figsize=FIGSIZE_LARGE)
@@ -211,14 +224,15 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         )
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
-        plt.tight_layout()
+        plt.gca().set_box_aspect(1)
+        # plt.tight_layout()
 
     # Overview for the MOKA kernel weights:
     if probas != []:
         probas = numpy(torch.stack(probas)).T
 
         if small:
-            plt.subplot(2, 2, fig_index)
+            plt.subplot(nrows_data, 2, fig_index)
             fig_index += 1
         else:
             plt.figure(figsize=FIGSIZE_LARGE)
@@ -235,13 +249,14 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             )
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
-        plt.tight_layout()
+        plt.gca().set_box_aspect(1)
+        # plt.tight_layout()
 
     # Overview for the normalizing constants:
     if constants != []:
 
         if small:
-            plt.subplot(2, 2, fig_index)
+            plt.subplot(nrows_data, 2, fig_index)
             fig_index += 1
         else:
             plt.figure(figsize=FIGSIZE_LARGE)
@@ -258,7 +273,34 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
 
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
-        plt.tight_layout()
+        plt.gca().set_box_aspect(1)
+        # plt.tight_layout()
+
+    # Overview for the number of neighbours:
+    if number_of_neighbours != []:
+        number_of_neighbours = numpy(torch.stack(number_of_neighbours)).T
+        
+        if small:
+            plt.subplot(nrows_data, 2, fig_index)
+            fig_index += 1
+        else:
+            plt.figure(figsize=FIGSIZE_LARGE)
+
+        markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
+        for scale, nb_neigh, marker in zip(sampler.proposal.s, number_of_neighbours, markers):
+            sns.lineplot(
+                x=iters,
+                y=nb_neigh,
+                marker=marker,
+                markersize=6,
+                label="scale = {:.3f}".format(scale),
+                ci="sd",
+            )
+        plt.xlabel("Iterations")
+        plt.ylabel("Mean number of neighbors")
+        plt.ylim(bottom=0.0)
+        plt.gca().set_box_aspect(1)
+        # plt.tight_layout()
 
     # Overview for the ESS:
     if ESS != []:
@@ -269,7 +311,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             ESSmax = 0.
 
         if small:
-            plt.subplot(2, 2, fig_index)
+            plt.subplot(nrows_data, 2, fig_index)
             fig_index += 1
         else:
             plt.figure(figsize=FIGSIZE_LARGE)
@@ -287,7 +329,8 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
 
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
-        plt.tight_layout()
+        plt.gca().set_box_aspect(1)
+        # plt.tight_layout()
 
     sampler.verbose = verbosity
 
@@ -298,6 +341,8 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         "error": errors,
         "fluctuation": fluctuations,
         "probas": probas,
+        "number of neighbours": number_of_neighbours,
+        "ESS" : ESS,
     }
 
     return to_return
@@ -566,11 +611,20 @@ class CMC(MonteCarloSampler):
         # x = x.clamp(0, 1)  # Clip to the unit square
         self.x = x
 
+        # Recompute the volume of the ball in order to count the neighbours 
+
+        volumes = float(np.pi ** (self.proposal.D / 2) / gamma(self.proposal.D / 2 + 1)) * (
+            torch.tensor(self.proposal.s, device=self.x.device) ** self.proposal.D
+        )
+        
+        # (-Prop_y + volumes.log() + np.log(len(x))).exp().mean(0)
+
         info = {
             "sample": x,
             "proposal": y,
             "rate": rate,
             "normalizing constant": (Prop_y - V_y).exp().mean(),
+            "number of neighbours": (-Prop_y).exp().mean(0) * volumes * float(len(x))
         }
         info = {**info, **self.extra_info()}
 
