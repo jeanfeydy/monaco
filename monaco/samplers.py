@@ -779,6 +779,7 @@ class MOKA_KIDS_CMC(MOKA_CMC):
             offset = -self.proposal.potential(x, offset)(
                 x
             )  #  Genuine Richardson-Lucy would have this line too
+            offset[torch.isnan(offset)] = torch.zeros(torch.isnan(offset).sum(), device=offset.device)
             u = u + offset
 
         u = u - u.logsumexp(0)  # Normalize the proposal
