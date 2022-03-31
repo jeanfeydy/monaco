@@ -1,3 +1,4 @@
+from cmath import inf
 from unicodedata import numeric
 import numpy as np
 import itertools
@@ -780,6 +781,7 @@ class MOKA_KIDS_CMC(MOKA_CMC):
                 x
             )  #  Genuine Richardson-Lucy would have this line too
             offset[torch.isnan(offset)] = torch.zeros(torch.isnan(offset).sum(), device=offset.device)
+            offset[offset>1e3] = 1e3 * torch.ones((offset>1e3).sum(), device = offset.device) 
             u = u + offset
 
         u = u - u.logsumexp(0)  # Normalize the proposal
