@@ -429,12 +429,13 @@ class NPAIS(MonteCarloSampler):
     """Non-parametric adaptive importance sampling, by batch for the sake of efficiency on the GPU."""
 
     def __init__(
-        self, space, start, proposal, annealing=None, q0=None, N=1, verbose=False
+        self, space, start, proposal, annealing=None, q0=None, N=1, sample_size=None, verbose=False
     ):
         super().__init__(space, start, proposal, verbose=verbose)
         self.annealing = annealing
         self.q0 = q0
         self.N = N
+        self.sample_size = N if sample_size is None else sample_size
         self.dtype = space.dtype
 
     def importance_sampling(self, n):
@@ -488,8 +489,8 @@ class NPAIS(MonteCarloSampler):
         self.memory = torch.cat((self.memory, new_points), dim=0)
         self.scores = torch.cat((self.scores, new_scores), dim=0)
 
-        # Return a sample of size N:
-        x = self.importance_sampling(self.N)
+        # Return a sample of size sample_size:
+        x = self.importance_sampling(min(self.sample_size,len(self.memory)))
 
         info = {
             "sample": x,
