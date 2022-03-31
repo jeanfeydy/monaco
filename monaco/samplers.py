@@ -722,6 +722,8 @@ class MOKA_CMC(CMC):
 
 
     def update_kernel(self, scores):
+        # Bound the scores from below (more stable)
+        scores[scores < -100] = -100
         # Update the kernel probabilities:
         probas = self.proposal.probas.clone()
         avg_score = self.proposal.probas.clone()
@@ -729,7 +731,7 @@ class MOKA_CMC(CMC):
             # probas[i] = scores[accept & (scale_indices == i)].exp().sum()
             scores_i = scores[self.scale_indices == i]
             if len(scores_i) == 0:
-                avg_score[i] = -1000000.0  # -> probas[i] = 0. -> probas[i] = 1%
+                avg_score[i] = -1000000.0  # -> probas[i] = 0. -> probas[i] = 1%
             else:
                 avg_score[i] = scores_i.mean()
 
@@ -741,6 +743,11 @@ class MOKA_CMC(CMC):
         probas[probas < .01] = .01  # Otherwise, some scales may disappear
         # Don't forget to re-normalize
         probas = probas / probas.sum()
+        
+        if torch.isnan(probas.sum()):
+            print("WARNING! Some NaN in the kernel probas have been removed.")
+            print(scores)
+            probas = torch.ones(len(probas), device=probas.device)/len(probas)
 
         self.proposal.probas = probas
 
