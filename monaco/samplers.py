@@ -430,13 +430,16 @@ class NPAIS(MonteCarloSampler):
     """Non-parametric adaptive importance sampling, by batch for the sake of efficiency on the GPU."""
 
     def __init__(
-        self, space, start, proposal, annealing=None, q0=None, N=1, sample_size=None, verbose=False
+        self, space, start, proposal, annealing=False, scale0=1.0, q0=None, N0=1, N=None, sample_size=None, T0=1, verbose=False
     ):
         super().__init__(space, start, proposal, verbose=verbose)
         self.annealing = annealing
         self.q0 = q0
-        self.N = N
+        self.N = N  # Batch size
+        self.N0 = N0 if N is None else N    # Initial number of particles
         self.sample_size = N if sample_size is None else sample_size
+        self.T0 = T0    # Burn in phase
+        self.scale0 = scale0    # Initial size of the proposal 
         self.dtype = space.dtype
 
     def importance_sampling(self, n):
@@ -448,15 +451,26 @@ class NPAIS(MonteCarloSampler):
     def update(self):
 
         if self.iteration == 0:
-            self.memory = self.q0.sample(self.N)
+            self.memory = self.q0.sample(self.N0)
             self.scores = self.q0.potential(self.memory) - self.distribution.potential(
                 self.memory
             )  # Pi / Q0
 
-        # Annealing ratio: weight of the defensive sample
-        lambda_t = (
-            0.0 if self.annealing is None else np.exp(-self.iteration / self.annealing)
-        )
+        if self.annealing:
+            annealing_factor = (1 + self.N * self.iteration/self.N0) ** (-1.0/(4 + self.space.dimension))
+            if self.iteration < self.T0:
+                # Annealing ratio: weight of the defensive sample
+                # lambda_t = (
+                #     0.0 if self.annealing is None else np.exp(-self.iteration / self.annealing)
+                # )
+                lambda_t = 1.0 if self.iteration < self.T0/2.0 else 0.5
+            else:
+                lambda_t = 0.25 * annealing_factor
+
+            self.proposal.s = [self.scale0/np.sqrt(self.space.dimension) * annealing_factor]
+        else:
+            lambda_t = 0.0
+            self.proposal.s = [self.scale0]
 
         # Choose to sample from the mixture or the defensive initialization:
         # defensive == 0 if mixture, 1 if sample from q0:
