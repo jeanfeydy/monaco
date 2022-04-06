@@ -457,6 +457,7 @@ class NPAIS(MonteCarloSampler):
             )  # Pi / Q0
 
         if self.annealing:
+            score_smoothing = 0.75
             annealing_factor = (1 + self.N * self.iteration/self.N0) ** (-1.0/(4 + self.space.dimension))
             if self.iteration < self.T0:
                 # Annealing ratio: weight of the defensive sample
@@ -469,6 +470,7 @@ class NPAIS(MonteCarloSampler):
 
             self.proposal.s = [self.scale0/np.sqrt(self.space.dimension) * annealing_factor]
         else:
+            score_smoothing = 1.0
             lambda_t = 0.0
             self.proposal.s = [self.scale0]
 
@@ -498,7 +500,7 @@ class NPAIS(MonteCarloSampler):
                 + lambda_t * (-defense_scores).exp()
             ).log()
             - new_potentials
-        )
+        ) * score_smoothing
 
         # Add to memory and scores:
         self.memory = torch.cat((self.memory, new_points), dim=0)
