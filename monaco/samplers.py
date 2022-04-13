@@ -444,7 +444,7 @@ class NPAIS(MonteCarloSampler):
 
     def importance_sampling(self, n):
         log_weights = self.scores - self.scores.logsumexp(0)
-        indices = np.random.choice(len(self.memory), size=n, p=numpy(log_weights.exp()))
+        indices = np.random.choice(len(self.memory), size=n, p=numpy(log_weights.exp()/log_weights.exp().sum()))
         indices = torch.from_numpy(indices).to(self.memory.device)
         return self.memory[indices, :]
 
@@ -499,13 +499,24 @@ class NPAIS(MonteCarloSampler):
         log_weights = self.scores - self.scores.logsumexp(0)
         mixture_scores = self.proposal.potential(self.memory, log_weights)(new_points)
 
-        new_scores = (
-            -(
-                (1 - lambda_t) * (-mixture_scores).exp()
-                + lambda_t * (-defense_scores).exp()
-            ).log()
-            - new_potentials
-        ) * score_smoothing
+        if lambda_t == 1.:
+            new_scores = defense_scores
+        elif lambda_t == 0.:
+            new_scores = mixture_scores
+        else:
+            new_scores = -torch.logsumexp(
+                torch.stack((np.log(1-lambda_t) - mixture_scores, np.log(lambda_t) - defense_scores)),0)
+        
+        new_scores -= new_potentials
+        new_scores *= score_smoothing
+        
+#         new_scores = (
+#             -(
+#                 (1 - lambda_t) * (-mixture_scores).exp()
+#                 + lambda_t * (-defense_scores).exp()
+#             ).log()
+#             - new_potentials
+#         ) * score_smoothing
 
         # Add to memory and scores:
         self.memory = torch.cat((self.memory, new_points), dim=0)
