@@ -20,7 +20,7 @@ def halfplane_to_disk(points):
     """Moebius map from the Poincare half-plane to the Poincare disk."""
     x = points[..., :-1]
     y = points[..., -1:]
-    sqnorms = (points ** 2).sum(-1, keepdim=True)
+    sqnorms = (points**2).sum(-1, keepdim=True)
     s = 1 / (1 + 2 * y + sqnorms)
 
     return torch.cat((2 * s * x, s * (sqnorms - 1)), dim=-1)
@@ -30,7 +30,7 @@ def disk_to_halfplane(points):
     """Moebius map from the Poincare half-plane to the Poincare disk."""
     x = points[..., :-1]
     y = points[..., -1:]
-    sqnorms = (points ** 2).sum(-1, keepdim=True)
+    sqnorms = (points**2).sum(-1, keepdim=True)
     s = 1 / (1 - 2 * y + sqnorms)
 
     return torch.cat((2 * s * x, s * (1 - sqnorms)), dim=-1)
@@ -92,11 +92,11 @@ class HyperbolicSpace(object):
             ax = plt.gca()
 
         disk = self.grid.clone()
-        mask = (disk ** 2).sum(1) < 1
+        mask = (disk**2).sum(1) < 1
         unit_disk = disk[mask, :].contiguous()
         halfplane = disk_to_halfplane(unit_disk)
 
-        log_heatmap = torch.zeros(self.resolution ** 2).type(self.dtype)
+        log_heatmap = torch.zeros(self.resolution**2).type(self.dtype)
         log_heatmap[:] = np.nan
         log_heatmap[mask] = potential(halfplane)
 
@@ -140,7 +140,7 @@ class BallProposal(Proposal):
         if self.D == 2:
             y = torch.rand(N, 1).type(self.dtype)
             y = 1 + y * ((scales.exp() + (-scales).exp()) / 2 - 1)
-            return (y + (y ** 2 - 1).sqrt()).log()
+            return (y + (y**2 - 1).sqrt()).log()
         else:
             raise NotImplementedError()
             radii = scales * torch.rand(N, 1).type(self.dtype)
@@ -179,7 +179,7 @@ class BallProposal(Proposal):
 
         D_ij = ((x_i - y_j) ** 2).sum(-1)
         D_ij = 1 + D_ij / (2 * x_i[self.D - 1] * y_j[self.D - 1])
-        D_ij = (D_ij + (D_ij ** 2 - 1).sqrt()).log()  # (N,M)
+        D_ij = (D_ij + (D_ij**2 - 1).sqrt()).log()  # (N,M)
 
         neighbors_ij = (scales - D_ij).step()  # 1 if |x_i-y_j| <= scales, 0 otherwise
 

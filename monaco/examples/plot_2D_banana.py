@@ -52,7 +52,7 @@ if test_case == "gaussians":
     m = torch.tensor([[0.2, 0.8], [0.8, 0.8], [0.5, 0.1]]).type(dtype)  # mean
     s = torch.tensor([0.02, 0.02, 0.02]).type(dtype)  # deviation
     w = torch.tensor([0.3, 0.3, 0.4]).type(dtype)  # weights
-    w = w ** 2
+    w = w**2
 
     w = w / w.sum()  # normalize weights
 
@@ -67,7 +67,7 @@ space = EuclideanSpace(dimension=D, dtype=dtype)
 
 
 def sinc_potential(x, stripes=3):
-    sqnorm = (x ** 2).sum(-1)
+    sqnorm = (x**2).sum(-1)
     V_i = np.pi * stripes * sqnorm
     V_i = (V_i.sin() / V_i) ** 2
     return -V_i.log()
@@ -124,8 +124,15 @@ if False:
         perfect_sample = distribution.sample(N)
         n, m = len(perfect_sample), len(perfect_sample_2)
         D_xx = squared_distances(perfect_sample, perfect_sample).sqrt().sum(dim=1).sum()
-        D_xy = squared_distances(perfect_sample, perfect_sample_2).sqrt().sum(dim=1).sum()
-        D_yy = squared_distances(perfect_sample_2, perfect_sample_2).sqrt().sum(dim=1).sum()
+        D_xy = (
+            squared_distances(perfect_sample, perfect_sample_2).sqrt().sum(dim=1).sum()
+        )
+        D_yy = (
+            squared_distances(perfect_sample_2, perfect_sample_2)
+            .sqrt()
+            .sum(dim=1)
+            .sum()
+        )
         EDtest[i] = D_xy / (n * m) - 0.5 * (D_xx / (n * n) + D_yy / (m * m))
 
     print(EDtest[range(100)])

@@ -48,15 +48,15 @@ def quat_to_matrices(points):
     w, x, y, z = points[:, 0], points[:, 1], points[:, 2], points[:, 3]
     Q = torch.stack(
         (
-            1 - 2 * y ** 2 - 2 * z ** 2,
+            1 - 2 * y**2 - 2 * z**2,
             2 * x * y - 2 * z * w,
             2 * x * z + 2 * y * w,
             2 * x * y + 2 * z * w,
-            1 - 2 * x ** 2 - 2 * z ** 2,
+            1 - 2 * x**2 - 2 * z**2,
             2 * y * z - 2 * x * w,
             2 * x * z - 2 * y * w,
             2 * y * z + 2 * x * w,
-            1 - 2 * x ** 2 - 2 * y ** 2,
+            1 - 2 * x**2 - 2 * y**2,
         ),
         dim=1,
     )
@@ -144,7 +144,7 @@ class Rotations(object):
         # Sphere of radius pi:
         theta = np.linspace(-np.pi, np.pi, 65)
         for z in np.linspace(-0.9, 0.9, 7):
-            r = np.sqrt(1 - z ** 2)
+            r = np.sqrt(1 - z**2)
             x = r * np.sin(theta)
             y = r * np.cos(theta)
             ax.plot(np.pi * x, np.pi * y, np.pi * z, linewidth=0.5, color="k")

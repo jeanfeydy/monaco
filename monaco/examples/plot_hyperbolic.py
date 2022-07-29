@@ -51,7 +51,7 @@ except IOError:
 
     x = hyperbolic_mapper.embedding_[:, 0]
     y = hyperbolic_mapper.embedding_[:, 1]
-    z = np.sqrt(1 + np.sum(hyperbolic_mapper.embedding_ ** 2, axis=1))
+    z = np.sqrt(1 + np.sum(hyperbolic_mapper.embedding_**2, axis=1))
 
     disk_x = x / (1 + z)
     disk_y = y / (1 + z)
@@ -110,7 +110,7 @@ B = torch.FloatTensor([4, 0.5]).type(dtype)
 ref = torch.stack((A,) * 1000 + (B,) * 1000, dim=0)
 
 d_AB = 1 + ((A - B) ** 2).sum() / (2 * A[1] * B[1])
-d_AB = (d_AB + (d_AB ** 2 - 1).sqrt()).log()
+d_AB = (d_AB + (d_AB**2 - 1).sqrt()).log()
 print(d_AB)
 
 
@@ -119,7 +119,7 @@ from monaco.hyperbolic import halfplane_to_disk
 print(halfplane_to_disk(A))
 C = halfplane_to_disk(B)
 print(C)
-R = (C ** 2).sum().sqrt()
+R = (C**2).sum().sqrt()
 d_IC = ((1 + R) / (1 - R)).log()
 print(d_IC)
 
@@ -163,7 +163,7 @@ class DistanceDistribution(object):
 
         D_ij = ((x_i - y_j) ** 2).sum(-1)
         D_ij = 1 + D_ij / (2 * x_i[1] * y_j[1])
-        D_ij = (D_ij + (D_ij ** 2 - 1).sqrt()).log()
+        D_ij = (D_ij + (D_ij**2 - 1).sqrt()).log()
 
         V_i = D_ij.min(dim=1)
         V_i = 10 * V_i.sqrt()
@@ -237,7 +237,7 @@ def chamfer_distance(sou, tar):
 
     D_ij = ((x_i - y_j) ** 2).sum(-1)
     D_ij = 1 + D_ij / (2 * x_i[1] * y_j[1])
-    D_ij = (D_ij + (D_ij ** 2 - 1).sqrt()).log()
+    D_ij = (D_ij + (D_ij**2 - 1).sqrt()).log()
 
     V_i = D_ij.min(dim=1)
 

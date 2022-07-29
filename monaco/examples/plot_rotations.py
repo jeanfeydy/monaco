@@ -98,7 +98,7 @@ def load_csv(fname):
     x = np.loadtxt(fname, skiprows=1, delimiter=",")
     x = torch.from_numpy(x).type(dtype)
     x -= x.mean(0)
-    scale = (x ** 2).sum(1).mean(0)
+    scale = (x**2).sum(1).mean(0)
     x /= scale
     return x
 
@@ -175,7 +175,6 @@ moka_sampler = MOKA_CMC(space, start, proposal, annealing=5).fit(distribution)
 display_samples(moka_sampler, iterations=100, runs=1, small=False)
 
 
-
 #############################################
 # As a sanity check, we perform the same computation
 # with simple pairs of points.
@@ -185,7 +184,7 @@ display_samples(moka_sampler, iterations=100, runs=1, small=False)
 def load_coordinates(coordinates):
     x = torch.FloatTensor(coordinates).type(dtype)
     x -= x.mean(0)
-    scale = (x ** 2).sum(1).mean(0)
+    scale = (x**2).sum(1).mean(0)
     x /= scale
     return x
 

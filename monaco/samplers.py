@@ -36,7 +36,9 @@ def display(
     space.draw_frame()
 
 
-def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80, 100], runs=5, small=True):
+def display_samples(
+    sampler, iterations=100, to_plot=[1, 2, 5, 10, 20, 50, 80, 100], runs=5, small=True
+):
     """Displays results and statistics for a run of a Monte Carlo sampler."""
 
     verbosity = sampler.verbose
@@ -44,10 +46,19 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
 
     start = sampler.x.clone()
 
-    iters, rates, errors, fluctuations, probas, constants, number_of_neighbours, ESS = [], [], [], [], [], [], [], []
+    iters, rates, errors, fluctuations, probas, constants, number_of_neighbours, ESS = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
 
     # Initial error
-    try:  
+    try:
         N = len(start)
         # "Energy distance" between a MCMC sample and a genuine one
         errors.append(
@@ -67,16 +78,16 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
     for run in range(runs):
         x_prev = start.clone()  # We copy the initialization to make independent runs!
         sampler.x[:] = start.clone()  # in-place update of the sampler state
-        sampler.iteration = 0        
+        sampler.iteration = 0
 
         if run == runs - 1:  # Fancy display for the last run
 
             if small:
-                nrows = int((len(to_plot)+1)/2) + ((len(to_plot)+1)%2>0)
+                nrows = int((len(to_plot) + 1) / 2) + ((len(to_plot) + 1) % 2 > 0)
                 plt.figure(figsize=(CELLSIZE[0] * 2, CELLSIZE[1] * nrows))
-                plt.subplot(nrows,2,1)
+                plt.subplot(nrows, 2, 1)
                 fig_index = 2
-            else: 
+            else:
                 plt.figure(figsize=FIGSIZE_LARGE)
 
             display(sampler.space, sampler.distribution.potential, x_prev)
@@ -84,16 +95,17 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             plt.title(f"it = 0")
             plt.tight_layout()
 
-
         # N.B.: our samplers are implemented as Python iterators.
         for it, info in enumerate(sampler):
 
             # Unwrap the full sampling "information":
             x = info["sample"]  # The actual points
-            y = info.get("proposal", None)  # samples that have been accepted or rejected
+            y = info.get(
+                "proposal", None
+            )  # samples that have been accepted or rejected
             u = info.get("log-weights", None)  # Deconvolution log-weights
 
-            iters.append(it+1)
+            iters.append(it + 1)
 
             # Save the relevant monitoring information:
             try:  # Acceptance rate
@@ -121,7 +133,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             except KeyError:
                 None
 
-            try:  
+            try:
                 N = len(x)
                 # "Energy distance" between a MCMC sample and a genuine one
                 errors.append(
@@ -208,7 +220,12 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             plt.figure(figsize=FIGSIZE_LARGE)
 
         sns.lineplot(
-            x=np.insert(iters,0,0), y=errors, marker="o", markersize=6, label="Error", ci="sd"
+            x=np.insert(iters, 0, 0),
+            y=errors,
+            marker="o",
+            markersize=6,
+            label="Error",
+            ci="sd",
         )
 
     # Overview for the Energy Distances between two genuine samples:
@@ -216,7 +233,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         fluctuations = np.array(fluctuations)
 
         sns.lineplot(
-            x=np.insert(iters,0,0),
+            x=np.insert(iters, 0, 0),
             y=fluctuations,
             marker="X",
             markersize=6,
@@ -280,7 +297,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
     # Overview for the number of neighbours:
     if number_of_neighbours != []:
         number_of_neighbours = numpy(torch.stack(number_of_neighbours)).T
-        
+
         if small:
             plt.subplot(nrows_data, 2, fig_index)
             fig_index += 1
@@ -288,7 +305,9 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             plt.figure(figsize=FIGSIZE_LARGE)
 
         markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
-        for scale, nb_neigh, marker in zip(sampler.proposal.s, number_of_neighbours, markers):
+        for scale, nb_neigh, marker in zip(
+            sampler.proposal.s, number_of_neighbours, markers
+        ):
             sns.lineplot(
                 x=iters,
                 y=nb_neigh,
@@ -309,7 +328,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         try:
             ESSmax = sampler.ESSmax
         except AttributeError:
-            ESSmax = 0.
+            ESSmax = 0.0
 
         if small:
             plt.subplot(nrows_data, 2, fig_index)
@@ -326,7 +345,7 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
             label="ESS",
             ci="sd",
         )
-        plt.hlines(ESSmax,0,iterations,'k','dotted')
+        plt.hlines(ESSmax, 0, iterations, "k", "dotted")
 
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
@@ -343,13 +362,14 @@ def display_samples(sampler, iterations=100, to_plot = [1, 2, 5, 10, 20, 50, 80,
         "fluctuation": fluctuations,
         "probas": probas,
         "number of neighbours": number_of_neighbours,
-        "ESS" : ESS,
+        "ESS": ESS,
     }
 
     return to_return
 
 
 # Sampling classes =====================================================
+
 
 class MonteCarloSampler(object):
     """Abstract Monte Carlo sampler, as a Python iterator."""
@@ -383,6 +403,7 @@ class MonteCarloSampler(object):
 
 
 # Baselines ===========================================
+
 
 class ParallelMetropolisHastings(MonteCarloSampler):
     """Parallel Metropolis-Hastings algorithm."""
@@ -430,21 +451,35 @@ class NPAIS(MonteCarloSampler):
     """Non-parametric adaptive importance sampling, by batch for the sake of efficiency on the GPU."""
 
     def __init__(
-        self, space, start, proposal, annealing=False, scale0=1.0, q0=None, N=None, sample_size=None, T0=1, verbose=False
+        self,
+        space,
+        start,
+        proposal,
+        annealing=False,
+        scale0=1.0,
+        q0=None,
+        N=None,
+        sample_size=None,
+        T0=1,
+        verbose=False,
     ):
         super().__init__(space, start, proposal, verbose=verbose)
         self.annealing = annealing
         self.q0 = q0
         self.N = N  # Batch size
-        self.N0 = int(N*T0/2.0) if annealing else N
+        self.N0 = int(N * T0 / 2.0) if annealing else N
         self.sample_size = N if sample_size is None else sample_size
-        self.T0 = T0    # Burn in phase
-        self.scale0 = scale0    # Initial size of the proposal 
+        self.T0 = T0  # Burn in phase
+        self.scale0 = scale0  # Initial size of the proposal
         self.dtype = space.dtype
 
     def importance_sampling(self, n):
         log_weights = self.scores - self.scores.logsumexp(0)
-        indices = np.random.choice(len(self.memory), size=n, p=numpy(log_weights.exp()/log_weights.exp().sum()))
+        indices = np.random.choice(
+            len(self.memory),
+            size=n,
+            p=numpy(log_weights.exp() / log_weights.exp().sum()),
+        )
         indices = torch.from_numpy(indices).to(self.memory.device)
         return self.memory[indices, :]
 
@@ -460,16 +495,18 @@ class NPAIS(MonteCarloSampler):
                 self.scores *= 0.75
 
         if self.annealing:
-            annealing_factor = (1 + self.N * self.iteration/self.N0) ** (-1.0/(4 + self.space.dimension))
+            annealing_factor = (1 + self.N * self.iteration / self.N0) ** (
+                -1.0 / (4 + self.space.dimension)
+            )
             if self.iteration < self.T0:
                 # Annealing ratio: weight of the defensive sample
                 # lambda_t = (
                 #     0.0 if self.annealing is None else np.exp(-self.iteration / self.annealing)
                 # )
-                lambda_t = 1.0 if self.iteration < self.T0/2.0 else 0.5
+                lambda_t = 1.0 if self.iteration < self.T0 / 2.0 else 0.5
                 score_smoothing = 0.75
             else:
-                # Then use the annealing factor 
+                # Then use the annealing factor
                 lambda_t = 0.25 * annealing_factor
                 score_smoothing = 1.0
 
@@ -499,31 +536,38 @@ class NPAIS(MonteCarloSampler):
         log_weights = self.scores - self.scores.logsumexp(0)
         mixture_scores = self.proposal.potential(self.memory, log_weights)(new_points)
 
-        if lambda_t == 1.:
+        if lambda_t == 1.0:
             new_scores = defense_scores
-        elif lambda_t == 0.:
+        elif lambda_t == 0.0:
             new_scores = mixture_scores
         else:
             new_scores = -torch.logsumexp(
-                torch.stack((np.log(1-lambda_t) - mixture_scores, np.log(lambda_t) - defense_scores)),0)
-        
+                torch.stack(
+                    (
+                        np.log(1 - lambda_t) - mixture_scores,
+                        np.log(lambda_t) - defense_scores,
+                    )
+                ),
+                0,
+            )
+
         new_scores -= new_potentials
         new_scores *= score_smoothing
-        
-#         new_scores = (
-#             -(
-#                 (1 - lambda_t) * (-mixture_scores).exp()
-#                 + lambda_t * (-defense_scores).exp()
-#             ).log()
-#             - new_potentials
-#         ) * score_smoothing
+
+        #         new_scores = (
+        #             -(
+        #                 (1 - lambda_t) * (-mixture_scores).exp()
+        #                 + lambda_t * (-defense_scores).exp()
+        #             ).log()
+        #             - new_potentials
+        #         ) * score_smoothing
 
         # Add to memory and scores:
         self.memory = torch.cat((self.memory, new_points), dim=0)
         self.scores = torch.cat((self.scores, new_scores), dim=0)
 
         # Return a sample of size sample_size:
-        x = self.importance_sampling(min(self.sample_size,len(self.memory)))
+        x = self.importance_sampling(min(self.sample_size, len(self.memory)))
 
         info = {
             "sample": x,
@@ -531,28 +575,31 @@ class NPAIS(MonteCarloSampler):
 
         return info
 
+
 class SMC(MonteCarloSampler):
     """Sequential Monte Carlo"""
 
-    def __init__(self, space, start, V0, proposal, temp, ESSmax, mh_step=1, verbose=False):
+    def __init__(
+        self, space, start, V0, proposal, temp, ESSmax, mh_step=1, verbose=False
+    ):
         super().__init__(space, start, proposal, verbose=verbose)
         self.V = V0
         self.V0 = V0
         self.N = len(self.x)
-        self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
+        self.weights = 1.0 / self.N * torch.ones(self.N, device=self.x.device)
         self.temp = temp
         self.ESSmax = ESSmax
         self.mh_step = mh_step
 
     def ESS(self):
-        return 1./(self.weights ** 2).sum()
+        return 1.0 / (self.weights**2).sum()
 
     def update(self):
-        
+
         iter = self.iteration
-        a = min((1+iter)/self.temp,1.)
-        Vtemp = lambda x: (1-a) * self.V0(x) + a * self.distribution.potential(x)
-        
+        a = min((1 + iter) / self.temp, 1.0)
+        Vtemp = lambda x: (1 - a) * self.V0(x) + a * self.distribution.potential(x)
+
         # Update weights (note: does not depend on the next sample)
         log_weights = self.weights.log() - Vtemp(self.x) + self.V(self.x)
         log_weights -= log_weights.logsumexp(0)
@@ -561,9 +608,9 @@ class SMC(MonteCarloSampler):
         # Resampling
         ESS = self.ESS()
         if ESS < self.ESSmax:
-            index = self.weights.multinomial(num_samples=self.N,replacement=True)
-            self.x = self.x[index,:]
-            self.weights = 1./self.N * torch.ones(self.N, device=self.x.device)
+            index = self.weights.multinomial(num_samples=self.N, replacement=True)
+            self.x = self.x[index, :]
+            self.weights = 1.0 / self.N * torch.ones(self.N, device=self.x.device)
 
         x = self.x
 
@@ -574,25 +621,24 @@ class SMC(MonteCarloSampler):
             # Logarithm of the MH ratio:
             scores = Vtemp(x) - Vtemp(y)
 
-            accept = torch.rand(self.N,device=x.device) <= scores.exp()  # h(u) = min(1, u)
+            accept = (
+                torch.rand(self.N, device=x.device) <= scores.exp()
+            )  # h(u) = min(1, u)
 
             x[accept, :] = y[accept, :]  # MCMC update
 
         self.x = x
 
         # Update potential
-        self.V = lambda x: (1-a) * self.V0(x) + a * self.distribution.potential(x)
+        self.V = lambda x: (1 - a) * self.V0(x) + a * self.distribution.potential(x)
 
-        info = {
-            "sample": x,
-            "ESS" : ESS
-        }
+        info = {"sample": x, "ESS": ESS}
 
         return info
 
 
-
 # Our first CMC method ============================================
+
 
 class CMC(MonteCarloSampler):
     """Collective Monte-Carlo."""
@@ -600,7 +646,6 @@ class CMC(MonteCarloSampler):
     def __init__(self, space, start, proposal, annealing=None, verbose=False):
         super().__init__(space, start, proposal, verbose=verbose)
         self.annealing = annealing
-
 
     def sample_proposal(self, x):
 
@@ -622,7 +667,6 @@ class CMC(MonteCarloSampler):
     def extra_info(self):
         return {}
 
-
     def update(self):
         x = self.x
         N = len(x)
@@ -642,17 +686,17 @@ class CMC(MonteCarloSampler):
         accept = torch.rand(N).type_as(x) <= scores.exp()  # h(u) = min(1, u)
         x[accept, :] = y[accept, :]  # MCMC update
 
-        self.update_kernel(scores)  # update the kernel probabilities 
+        self.update_kernel(scores)  # update the kernel probabilities
         rate = (1.0 * accept).mean()
         # x = x.clamp(0, 1)  # Clip to the unit square
         self.x = x
 
-        # Recompute the volume of the ball in order to count the neighbours 
+        # Recompute the volume of the ball in order to count the neighbours
 
-        volumes = float(np.pi ** (self.proposal.D / 2) / gamma(self.proposal.D / 2 + 1)) * (
-            torch.tensor(self.proposal.s, device=self.x.device) ** self.proposal.D
-        )
-        
+        volumes = float(
+            np.pi ** (self.proposal.D / 2) / gamma(self.proposal.D / 2 + 1)
+        ) * (torch.tensor(self.proposal.s, device=self.x.device) ** self.proposal.D)
+
         # (-Prop_y + volumes.log() + np.log(len(x))).exp().mean(0)
 
         info = {
@@ -660,7 +704,7 @@ class CMC(MonteCarloSampler):
             "proposal": y,
             "rate": rate,
             "normalizing constant": (Prop_y - V_y).exp().mean(),
-            "number of neighbours": (-Prop_y).exp().mean(0) * volumes * float(len(x))
+            "number of neighbours": (-Prop_y).exp().mean(0) * volumes * float(len(x)),
         }
         info = {**info, **self.extra_info()}
 
@@ -672,7 +716,7 @@ class Ada_CMC(CMC):
 
     def proposal_potential(self, x, ratio):
         N = len(x)
-        indices = torch.randint(N, size=(N,)).to(x.device) 
+        indices = torch.randint(N, size=(N,)).to(x.device)
         self.proposal.adapt(x)
         y = self.proposal.adaptive_sample(x, indices)  # Proposal
 
@@ -700,12 +744,12 @@ class MOKA_Markov_CMC(CMC):
         logprop_x -= logprop_x.logsumexp(0, keepdim=True)  # (N, K)
 
         # Get the current vector of kernel weights
-        probas = torch.ones_like(self.proposal.probas) #.clone()
+        probas = torch.ones_like(self.proposal.probas)  # .clone()
         probas = probas / probas.sum()
 
         log_probas = probas.log().detach()
         log_probas.requires_grad = True
-        #optimizer = torch.optim.LBFGS([log_probas], line_search_fn = "strong_wolfe")
+        # optimizer = torch.optim.LBFGS([log_probas], line_search_fn = "strong_wolfe")
         optimizer = torch.optim.Adam([log_probas], lr=1)
 
         # Define the auxiliary function to optimize
@@ -714,7 +758,7 @@ class MOKA_Markov_CMC(CMC):
             log_probas_normalized = log_probas - log_probas.logsumexp(-1)
             log_products = logprop_x + log_probas_normalized.view(1, -1)
             logprobas_x = log_products.logsumexp(-1)
-            
+
             # Total Variation penalty:
             loss = (logprobas_x.exp() - logpi_x.exp()).abs().sum()
 
@@ -738,10 +782,8 @@ class MOKA_Markov_CMC(CMC):
 
         return y, V_x, V_y, Prop_x, Prop_y
 
-
     def extra_info(self):
-        return {"probas" : self.proposal.probas}
-
+        return {"probas": self.proposal.probas}
 
 
 class MOKA_CMC(CMC):
@@ -751,9 +793,8 @@ class MOKA_CMC(CMC):
         N = len(x)
         indices = torch.randint(N, size=(N,)).to(x.device)
         y, scale_indices = self.proposal.sample_indices(x[indices, :])
-        self.scale_indices = scale_indices 
+        self.scale_indices = scale_indices
         return y
-
 
     def update_kernel(self, scores):
         # Bound the scores from below (more stable)
@@ -774,24 +815,23 @@ class MOKA_CMC(CMC):
         probas = avg_score.exp()
 
         # Minimal probability per scale: 1%
-        probas[probas < .01] = .01  # Otherwise, some scales may disappear
+        probas[probas < 0.01] = 0.01  # Otherwise, some scales may disappear
         # Don't forget to re-normalize
         probas = probas / probas.sum()
-        
+
         if torch.isnan(probas.sum()):
             print("WARNING! Some NaN in the kernel probas have been removed.")
             print(scores)
-            probas = torch.ones(len(probas), device=probas.device)/len(probas)
+            probas = torch.ones(len(probas), device=probas.device) / len(probas)
 
         self.proposal.probas = probas
 
-
     def extra_info(self):
-        return {"probas" : self.proposal.probas}
-
+        return {"probas": self.proposal.probas}
 
 
 from scipy import stats
+
 
 class MOKA_KIDS_CMC(MOKA_CMC):
     """Kernel Importance-by-Deconvolution Sampling Collective Monte-Carlo."""
@@ -801,7 +841,6 @@ class MOKA_KIDS_CMC(MOKA_CMC):
     ):
         super().__init__(space, start, proposal, verbose=verbose, annealing=annealing)
         self.nits = iterations
-
 
     def proposal_potential(self, x, ratio):
         N = len(x)
@@ -821,8 +860,12 @@ class MOKA_KIDS_CMC(MOKA_CMC):
             offset = -self.proposal.potential(x, offset)(
                 x
             )  #  Genuine Richardson-Lucy would have this line too
-            offset[torch.isnan(offset)] = torch.zeros(torch.isnan(offset).sum(), device=offset.device)
-            offset[offset>1e3] = 1e3 * torch.ones((offset>1e3).sum(), device = offset.device) 
+            offset[torch.isnan(offset)] = torch.zeros(
+                torch.isnan(offset).sum(), device=offset.device
+            )
+            offset[offset > 1e3] = 1e3 * torch.ones(
+                (offset > 1e3).sum(), device=offset.device
+            )
             u = u + offset
 
         u = u - u.logsumexp(0)  # Normalize the proposal
@@ -832,7 +875,7 @@ class MOKA_KIDS_CMC(MOKA_CMC):
         indices = np.random.choice(N, size=N, p=numpy(u.exp()))
         indices = torch.from_numpy(indices).to(x.device)
         y, scale_indices = self.proposal.sample_indices(x[indices, :])  # Proposal
-        self.scale_indices = scale_indices 
+        self.scale_indices = scale_indices
 
         # Potentials:
         # -------------------------------------------
@@ -843,13 +886,11 @@ class MOKA_KIDS_CMC(MOKA_CMC):
 
         return y, V_x, V_y, Prop_x, Prop_y
 
-
     def extra_info(self):
         return {
-            "log-weights" : self.u,
-            "probas" : self.proposal.probas,
+            "log-weights": self.u,
+            "probas": self.proposal.probas,
         }
-
 
 
 class KIDS_CMC(MOKA_KIDS_CMC):
@@ -860,5 +901,4 @@ class KIDS_CMC(MOKA_KIDS_CMC):
         None
 
     def extra_info(self):
-        return {"log-weights" : self.u}
-
+        return {"log-weights": self.u}

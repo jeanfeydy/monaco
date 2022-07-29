@@ -8,7 +8,9 @@ numpy = lambda x: x.cpu().numpy()
 class Proposal:
     """Abstract class for proposals, handling the logic for sums of kernels."""
 
-    def __init__(self, space, scale=1.0, probas=None, exploration=None, exploration_proposal=None):
+    def __init__(
+        self, space, scale=1.0, probas=None, exploration=None, exploration_proposal=None
+    ):
         """Creates a proposal, possibly with multiple scales."""
 
         self.space = space
@@ -18,7 +20,7 @@ class Proposal:
         self.exploration_proposal = exploration_proposal  # Proposal
 
         scale = [scale] if type(scale) is float else scale
-        
+
         self.s = scale
         self.probas = (
             torch.FloatTensor([1.0] * len(self.s)).type(self.dtype)
@@ -33,7 +35,7 @@ class Proposal:
     def explore(self, x, y):
         """Replace a set proportion of the points by "random" samples."""
         if self.exploration is not None:
-            to_explore = torch.rand(len(y)).type_as(y) <= self.exploration 
+            to_explore = torch.rand(len(y)).type_as(y) <= self.exploration
             y[to_explore] = self.exploration_proposal.sample(x[to_explore])
         return y
 
@@ -79,7 +81,7 @@ class Proposal:
                 nV_t = np.log(1 - self.exploration) - V(t)
                 nVexp_t = np.log(self.exploration) - Vexp(t)
 
-                return - torch.stack((nV_t.view(-1), nVexp_t.view(-1))).logsumexp(0)
+                return -torch.stack((nV_t.view(-1), nVexp_t.view(-1))).logsumexp(0)
 
             return V_total
 
@@ -89,9 +91,7 @@ class Proposal:
         s = torch.FloatTensor(self.s).type_as(source)
         scales = LazyTensor(s)  # (1,1,K)
 
-        V_source = self.nlog_density(
-            source, source, log_weights, scales
-        )
+        V_source = self.nlog_density(source, source, log_weights, scales)
 
         return V_source
 

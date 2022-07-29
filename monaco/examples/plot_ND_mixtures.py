@@ -50,17 +50,17 @@ if test_case == "gaussians":
     m = torch.rand(M, D).type(dtype)  # mean
     s = torch.rand(M).type(dtype)  # deviation
     w = torch.rand(M).type(dtype)  # weights
-    
-    m[0,:] = (1./(2*math.sqrt(D)))*torch.ones(D).type(dtype)
-    m[0,0] = -m[0,0]
-    m[1,:] = -(1./(2*math.sqrt(D)))*torch.ones(D).type(dtype)
-    m[1,0] = -m[1,0]
+
+    m[0, :] = (1.0 / (2 * math.sqrt(D))) * torch.ones(D).type(dtype)
+    m[0, 0] = -m[0, 0]
+    m[1, :] = -(1.0 / (2 * math.sqrt(D))) * torch.ones(D).type(dtype)
+    m[1, 0] = -m[1, 0]
     m += 1
-    s = math.sqrt(.4/D)*torch.ones(M).type(dtype)
+    s = math.sqrt(0.4 / D) * torch.ones(M).type(dtype)
     m /= 2
     s /= 2
     w = torch.ones(M).type(dtype)
-    
+
     w = w / w.sum()  # normalize weights
 
     distribution = GaussianMixture(space, m, s, w)
@@ -101,23 +101,28 @@ annealing = None
 
 from monaco.euclidean import BallProposal
 
-scale = .2
+scale = 0.2
 
-proposal = BallProposal(space, scale=scale,
-                        exploration=exploration, exploration_proposal=exploration_proposal)
+proposal = BallProposal(
+    space,
+    scale=scale,
+    exploration=exploration,
+    exploration_proposal=exploration_proposal,
+)
 
 ##########################################
 # First of all, we illustrate a run of the standard
 # Metropolis-Hastings algorithm, parallelized on the GPU:
 
 from monaco.samplers import display_samples
+
 info = {}
 
 from monaco.samplers import ParallelMetropolisHastings
 
-pmh_sampler = ParallelMetropolisHastings(space, start, proposal, annealing=annealing).fit(
-    distribution
-)
+pmh_sampler = ParallelMetropolisHastings(
+    space, start, proposal, annealing=annealing
+).fit(distribution)
 info["PMH"] = display_samples(pmh_sampler, iterations=niter, runs=nruns)
 
 ########################################
@@ -126,8 +131,12 @@ info["PMH"] = display_samples(pmh_sampler, iterations=niter, runs=nruns)
 
 from monaco.samplers import CMC
 
-proposal = BallProposal(space, scale=scale,
-                        exploration=exploration, exploration_proposal=exploration_proposal)
+proposal = BallProposal(
+    space,
+    scale=scale,
+    exploration=exploration,
+    exploration_proposal=exploration_proposal,
+)
 
 cmc_sampler = CMC(space, start, proposal, annealing=None).fit(distribution)
 info["CMC"] = display_samples(cmc_sampler, iterations=niter, runs=nruns)
@@ -140,8 +149,12 @@ from monaco.samplers import MOKA_CMC
 
 multi_scale = [0.1, 0.16, 0.24, 0.3]
 
-proposal = BallProposal(space, scale=multi_scale,
-                        exploration=exploration, exploration_proposal=exploration_proposal)
+proposal = BallProposal(
+    space,
+    scale=multi_scale,
+    exploration=exploration,
+    exploration_proposal=exploration_proposal,
+)
 
 moka_sampler = MOKA_CMC(space, start, proposal, annealing=annealing).fit(distribution)
 info["MOKA"] = display_samples(moka_sampler, iterations=niter, runs=nruns)
@@ -151,10 +164,16 @@ info["MOKA"] = display_samples(moka_sampler, iterations=niter, runs=nruns)
 
 from monaco.samplers import MOKA_Markov_CMC
 
-proposal = BallProposal(space, scale=multi_scale,
-                        exploration=exploration, exploration_proposal=exploration_proposal)
+proposal = BallProposal(
+    space,
+    scale=multi_scale,
+    exploration=exploration,
+    exploration_proposal=exploration_proposal,
+)
 
-moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=annealing).fit(distribution)
+moka_markov_sampler = MOKA_Markov_CMC(space, start, proposal, annealing=annealing).fit(
+    distribution
+)
 info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=niter, runs=nruns)
 
 
@@ -164,12 +183,16 @@ info["MOKA Markov"] = display_samples(moka_markov_sampler, iterations=niter, run
 
 from monaco.samplers import MOKA_KIDS_CMC
 
-proposal = BallProposal(space, scale=multi_scale,
-                        exploration=exploration, exploration_proposal=exploration_proposal)
-
-moka_kids_sampler = MOKA_KIDS_CMC(space, start, proposal, annealing=annealing, iterations=50).fit(
-    distribution
+proposal = BallProposal(
+    space,
+    scale=multi_scale,
+    exploration=exploration,
+    exploration_proposal=exploration_proposal,
 )
+
+moka_kids_sampler = MOKA_KIDS_CMC(
+    space, start, proposal, annealing=annealing, iterations=50
+).fit(distribution)
 info["MOKA_KIDS"] = display_samples(moka_kids_sampler, iterations=niter, runs=nruns)
 
 
@@ -184,8 +207,9 @@ import pickle
 
 nruns = 1
 
-proposal = BallProposal(space, scale=0.2,
-                        exploration=exploration, exploration_proposal=exploration_proposal)
+proposal = BallProposal(
+    space, scale=0.2, exploration=exploration, exploration_proposal=exploration_proposal
+)
 
 
 class Q_0(object):
@@ -194,7 +218,6 @@ class Q_0(object):
 
     def sample(self, n):
         return 0.9 + 0.1 * torch.rand(n, D).type(dtype)
-        
 
     def potential(self, x):
         v = 100000 * torch.ones(len(x), 1).type_as(x)
@@ -229,7 +252,9 @@ def display_line(key, marker):
 plt.figure(figsize=(8, 8))
 markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
 
-for key, marker in zip(["PMH", "CMC", "MOKA Markov", "MOKA", "MOKA_KIDS", "SAIS"], markers):
+for key, marker in zip(
+    ["PMH", "CMC", "MOKA Markov", "MOKA", "MOKA_KIDS", "SAIS"], markers
+):
     display_line(key, marker)
 
 
