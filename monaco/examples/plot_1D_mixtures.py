@@ -250,12 +250,8 @@ info["MOKA+KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 from monaco.samplers import NPAIS
 
 proposal = BallProposal(
-    space,
-    scale=[0.001, 0.003, 0.01, 0.03, 0.1, 0.3],
-    exploration=exploration,
-    exploration_proposal=exploration_proposal,
+    space, scale=0.1, exploration=exploration, exploration_proposal=exploration_proposal
 )
-
 
 class Q_0(object):
     def __init__(self):

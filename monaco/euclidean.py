@@ -439,7 +439,7 @@ class GMMProposal(Proposal):
                     1 + 0 * torch.rand(self.D, 1).type(self.dtype)
                 ) ** 2
 
-    def adapt(self, x):
+    def adapt(self, x, reg=1e-7):
         N = len(x)
         K, D = self.K, self.D
 
@@ -450,7 +450,11 @@ class GMMProposal(Proposal):
             m_j = LazyTensor(self.means.view(1, K, D))
 
             if self.covariance_type == "full":
-                precision = self.covariances.inverse()
+                diag = torch.zeros_like(self.covariances)
+                for k in range(K):
+                    diag[k,:,:] = torch.diag(torch.ones_like(self.covariances[0,0,:]))
+
+                precision = (self.covariances + reg * diag).inverse()
                 prec_j = LazyTensor(precision.reshape(1, K, D * D))
                 D_ij = (x_i - m_j) | (prec_j).matvecmult(x_i - m_j)
                 w_j = LazyTensor(
@@ -458,17 +462,17 @@ class GMMProposal(Proposal):
                     * torch.sqrt(precision.det()).view(1, K, 1)
                 )
             else:
-                cov_j = LazyTensor(self.covariances.view(1, K, D) + 0.0000001)
+                cov_j = LazyTensor(self.covariances.view(1, K, D) + reg)
                 D_ij = ((x_i - m_j) ** 2 / cov_j).sum(dim=2)
                 w_j = LazyTensor(
                     self.weights.view(1, K, 1)
-                    * torch.rsqrt(torch.prod(self.covariances, dim=1) + 0.0000001).view(
+                    * torch.rsqrt(torch.prod(self.covariances, dim=1) + reg).view(
                         1, K, 1
                     )
                 )
 
             Gauss_ij = (-D_ij / 2).exp() * w_j
-            BayesNorm_i = LazyTensor((Gauss_ij.sum(dim=1) + 0.0000001).view(N, 1, 1))
+            BayesNorm_i = LazyTensor((Gauss_ij.sum(dim=1) + reg).view(N, 1, 1))
 
             # membership probabilities H: a LazyTensor of size N, K
             H_ij = Gauss_ij / BayesNorm_i  # N x K
@@ -477,16 +481,16 @@ class GMMProposal(Proposal):
             self.weights = H_sum.view(-1) / N
             self.weights /= self.weights.sum()
 
-            self.means = (H_ij * x_i).sum(dim=0) / (H_sum + 0.0000001)
+            self.means = (H_ij * x_i).sum(dim=0) / (H_sum + reg)
 
             m_j = LazyTensor(self.means.view(1, K, D))
             if self.covariance_type == "full":
                 self.covariances = (H_ij * (x_i - m_j).tensorprod(x_i - m_j)).sum(
                     0
-                ).view(K, D, D) / (H_sum.view(K, 1, 1) + 0.0000001)
+                ).view(K, D, D) / (H_sum.view(K, 1, 1) + reg)
             else:
                 self.covariances = (H_ij * (x_i - m_j) ** 2).sum(0) / (
-                    H_sum.view(K, 1) + 0.0000001
+                    H_sum.view(K, 1) + reg
                 )
 
             assert not torch.isnan(self.means).sum()

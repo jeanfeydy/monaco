@@ -1,6 +1,6 @@
 """
 Sampling on a banana distribution
-===============================
+==================================
 
 We discuss the performances of several Monte Carlo samplers on a toy 2D example.
 

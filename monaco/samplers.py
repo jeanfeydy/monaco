@@ -37,9 +37,14 @@ def display(
 
 
 def display_samples(
-    sampler, iterations=100, to_plot=[1, 2, 5, 10, 20, 50, 80, 100], runs=5, small=True
+    sampler, iterations=100, to_plot=None, runs=5, small=True
 ):
     """Displays results and statistics for a run of a Monte Carlo sampler."""
+
+    if to_plot is None:
+        to_plot = [1, 2, 5, 10, 20, 50, 80, 100]
+
+    to_plot = [it for it in to_plot if it <= iterations]
 
     verbosity = sampler.verbose
     sampler.verbose = True
@@ -179,13 +184,15 @@ def display_samples(
 
     iters = np.array(iters)
 
-    small = False
+    nfigures = 0
+    for dat in [rates, errors, probas, constants, number_of_neighbours, ESS]:
+        if dat != []:
+            nfigures += 1
 
+    nrows_data = (nfigures + 1) // 2
     if small:
-        plt.figure(figsize=FIGSIZE_LARGE)
+        plt.figure(figsize=(CELLSIZE[0] * 2, CELLSIZE[1] * nrows_data))
         fig_index = 1
-
-    nrows_data = 3
 
     # Overview for the acceptance rates:
     if rates != []:
@@ -207,7 +214,8 @@ def display_samples(
         plt.ylim(0, 1)
         plt.xlabel("Iterations")
         plt.gca().set_box_aspect(1)
-        # plt.tight_layout()
+        if small:
+            plt.tight_layout()
 
     # Overview for the Energy Distances between MCMC and genuine samples:
     if errors != []:
@@ -243,7 +251,8 @@ def display_samples(
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
         plt.gca().set_box_aspect(1)
-        # plt.tight_layout()
+        if small:
+            plt.tight_layout()
 
     # Overview for the MOKA kernel weights:
     if probas != []:
@@ -268,7 +277,8 @@ def display_samples(
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
         plt.gca().set_box_aspect(1)
-        # plt.tight_layout()
+        if small:
+            plt.tight_layout()
 
     # Overview for the normalizing constants:
     if constants != []:
@@ -292,7 +302,8 @@ def display_samples(
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
         plt.gca().set_box_aspect(1)
-        # plt.tight_layout()
+        if small:
+            plt.tight_layout()
 
     # Overview for the number of neighbours:
     if number_of_neighbours != []:
@@ -320,7 +331,8 @@ def display_samples(
         plt.ylabel("Mean number of neighbors")
         plt.ylim(bottom=0.0)
         plt.gca().set_box_aspect(1)
-        # plt.tight_layout()
+        if small:
+            plt.tight_layout()
 
     # Overview for the ESS:
     if ESS != []:
@@ -350,12 +362,13 @@ def display_samples(
         plt.xlabel("Iterations")
         plt.ylim(bottom=0.0)
         plt.gca().set_box_aspect(1)
-        # plt.tight_layout()
+        if small:
+            plt.tight_layout()
 
     sampler.verbose = verbosity
 
     to_return = {
-        "iteration": iters,
+        "iteration": np.insert(iters, 0, 0),
         "rate": rates,
         "normalizing constant": constants,
         "error": errors,

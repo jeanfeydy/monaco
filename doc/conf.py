@@ -142,7 +142,7 @@ project = "Monaco"
 # import time
 # copyright = '2020-{}, Anonymous'.format(time.strftime("%Y"))
 
-copyright = "2020-2021, Jean Feydy, Antoine Diez, Grégoire Clarté."
+copyright = "2020-2022, Jean Feydy, Antoine Diez, Grégoire Clarté."
 author = "Jean Feydy, Antoine Diez, Grégoire Clarté."
 
 # The version info for the project you're documenting, acts as replacement for
@@ -159,7 +159,7 @@ release = __version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -290,4 +290,4 @@ texinfo_documents = [
 
 
 def setup(app):
-    app.add_stylesheet("theme_override.css")
+    app.add_css_file("theme_override.css")
