@@ -36,9 +36,7 @@ def display(
     space.draw_frame()
 
 
-def display_samples(
-    sampler, iterations=100, to_plot=None, runs=5, small=True
-):
+def display_samples(sampler, iterations=100, to_plot=None, runs=5, small=True):
     """Displays results and statistics for a run of a Monte Carlo sampler."""
 
     if to_plot is None:
@@ -460,8 +458,8 @@ class ParallelMetropolisHastings(MonteCarloSampler):
         return info
 
 
-class NPAIS(MonteCarloSampler):
-    """Non-parametric adaptive importance sampling, by batch for the sake of efficiency on the GPU."""
+class SAIS(MonteCarloSampler):
+    """Safe adaptive importance sampling, by batch for the sake of efficiency on the GPU."""
 
     def __init__(
         self,

@@ -201,7 +201,7 @@ info["KIDS"] = display_samples(kids_sampler, iterations=20, runs=nruns)
 # memory usage:
 
 
-from monaco.samplers import NPAIS
+from monaco.samplers import SAIS
 
 proposal = BallProposal(
     space, scale=0.1, exploration=exploration, exploration_proposal=exploration_proposal
@@ -223,10 +223,10 @@ class Q_0(object):
 
 q0 = Q_0()
 
-npais_sampler = NPAIS(space, start, proposal, annealing=None, q0=q0, N=N).fit(
+sais_sampler = SAIS(space, start, proposal, annealing=None, q0=q0, N=N).fit(
     distribution
 )
-info["NPAIS"] = display_samples(npais_sampler, iterations=20, runs=nruns)
+info["SAIS"] = display_samples(sais_sampler, iterations=20, runs=nruns)
 
 
 ###############################################
@@ -252,7 +252,7 @@ def display_line(key, marker):
 plt.figure(figsize=(4, 4))
 markers = itertools.cycle(("o", "X", "P", "D", "^", "<", "v", ">", "*"))
 
-for key, marker in zip(["PMH", "CMC", "MOKA Markov", "KIDS", "NPAIS"], markers):
+for key, marker in zip(["PMH", "CMC", "MOKA Markov", "KIDS", "SAIS"], markers):
     display_line(key, marker)
 
 

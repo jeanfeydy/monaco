@@ -452,7 +452,9 @@ class GMMProposal(Proposal):
             if self.covariance_type == "full":
                 diag = torch.zeros_like(self.covariances)
                 for k in range(K):
-                    diag[k,:,:] = torch.diag(torch.ones_like(self.covariances[0,0,:]))
+                    diag[k, :, :] = torch.diag(
+                        torch.ones_like(self.covariances[0, 0, :])
+                    )
 
                 precision = (self.covariances + reg * diag).inverse()
                 prec_j = LazyTensor(precision.reshape(1, K, D * D))

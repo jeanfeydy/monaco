@@ -291,7 +291,7 @@ info["MOKA_KIDS"] = display_samples(moka_kids_sampler, iterations=niter, runs=nr
 # memory usage:
 
 
-from monaco.samplers import NPAIS
+from monaco.samplers import SAIS
 
 proposal = BallProposal(
     space,
@@ -316,10 +316,10 @@ class Q_0(object):
 
 q0 = Q_0()
 
-npais_sampler = NPAIS(space, start, proposal, annealing=annealing, q0=q0, N=N).fit(
-    distribution
-)
-info["SAIS"] = display_samples(npais_sampler, iterations=niter, runs=nruns)
+sais_sampler = SAIS(
+    space, start, proposal, annealing=True, scale0=0.5, q0=q0, N=N, sample_size=N, T0=10
+).fit(distribution)
+info["SAIS"] = display_samples(sais_sampler, iterations=niter, runs=nruns)
 
 
 ###############################################
